@@ -6,6 +6,12 @@ import { recognizeVehicle } from "./agents/vision.js";
 import { suggestPrice } from "./agents/pricing.js";
 import { translateBatch } from "./agents/translate.js";
 import { searchVehicles } from "./agents/search.js";
+import { detectDamage } from "./agents/damage.js";
+import { quoteRental } from "./agents/rental.js";
+import { checkFraud } from "./agents/fraud.js";
+import { recommendSimilar } from "./agents/recommend.js";
+import { handleSupport } from "./agents/support.js";
+import { negotiateTurn } from "./agents/negotiation.js";
 import { checkpointer, type ThreadState } from "./checkpointer.js";
 import { audit } from "./audit.js";
 import type { UIDirective } from "./ui-directive.js";
@@ -232,6 +238,22 @@ function pickAgents(ctx: OrchestrationContext): AgentRun[] {
             const result = await recognizeVehicle(c.input.images!);
             const cardId = `recognition-${nanoid(6)}`;
             const directive: UIDirective = {
+              type: "form_autofill",
+              formId: "sell-form",
+              fields: {
+                make: result.make,
+                model: result.model,
+                year: result.year,
+                bodyType: result.bodyType,
+                color: result.color,
+                makeId: result.make, // Vision içinde makeId set edilebilir
+              },
+            };
+            c.directives.push(directive);
+            await emitInline(c, directive);
+
+            // Recognition result card
+            const recCard: UIDirective = {
               type: "show_card",
               card: "recognition_result",
               cardId,
@@ -245,8 +267,9 @@ function pickAgents(ctx: OrchestrationContext): AgentRun[] {
                 alternatives: result.alternatives,
               },
             };
-            c.directives.push(directive);
-            await emitInline(c, directive);
+            c.directives.push(recCard);
+            await emitInline(c, recCard);
+
             return {
               result,
               confidence: result.overallConfidence,
@@ -285,6 +308,33 @@ function pickAgents(ctx: OrchestrationContext): AgentRun[] {
             return {
               result,
               confidence: result.confidence,
+              costUsd: result.costUsd,
+              tokens: result.tokens,
+              model: result.model,
+              durationMs: result.durationMs,
+            };
+          },
+        });
+      }
+
+      // Fraud check (vehicleId varsa)
+      if (ctx.input.vehicleId) {
+        agents.push({
+          agent: "fraud",
+          run: async (c) => {
+            const result = await checkFraud(c.input.vehicleId!);
+            const cardId = `fraud-${nanoid(6)}`;
+            const directive: UIDirective = {
+              type: "show_card",
+              card: "fraud_check",
+              cardId,
+              data: result,
+            };
+            c.directives.push(directive);
+            await emitInline(c, directive);
+            return {
+              result,
+              confidence: result.riskScore < 30 ? 0.9 : 0.6,
               costUsd: result.costUsd,
               tokens: result.tokens,
               model: result.model,
@@ -360,9 +410,208 @@ function pickAgents(ctx: OrchestrationContext): AgentRun[] {
       break;
     }
 
+    case "check_damage":
+      if (ctx.input.images && ctx.input.images.length >= 2) {
+        agents.push({
+          agent: "damage",
+          run: async (c) => {
+            const result = await detectDamage(c.input.images!);
+            const cardId = `damage-${nanoid(6)}`;
+            const directive: UIDirective = {
+              type: "show_card",
+              card: "damage_report",
+              cardId,
+              data: result,
+            };
+            c.directives.push(directive);
+            await emitInline(c, directive);
+
+            if (result.humanInLoopRequired) {
+              const hilDirective: UIDirective = {
+                type: "human_in_loop_required",
+                reason: "Hasar tespiti düşük güvenle sonuçlandı, uzman incelemesi gerekli.",
+                resumeToken: nanoid(16),
+                data: { damages: result.damages },
+              };
+              c.directives.push(hilDirective);
+              await emitInline(c, hilDirective);
+            }
+
+            return {
+              result,
+              confidence: 0.85,
+              costUsd: result.costUsd,
+              tokens: result.tokens,
+              model: result.model,
+              durationMs: result.durationMs,
+            };
+          },
+        });
+      }
+      break;
+
+    case "recommend_similar":
+      if (ctx.input.vehicleId) {
+        agents.push({
+          agent: "recommend",
+          run: async (c) => {
+            const result = await recommendSimilar({
+              vehicleId: c.input.vehicleId!,
+              locale: c.input.locale,
+              limit: 10,
+            });
+            const cardId = `recommend-${nanoid(6)}`;
+            const directive: UIDirective = {
+              type: "show_card",
+              card: "recommendations",
+              cardId,
+              data: { vehicles: result.vehicles },
+            };
+            c.directives.push(directive);
+            await emitInline(c, directive);
+            return {
+              result,
+              confidence: 0.85,
+              costUsd: result.costUsd,
+              tokens: result.tokens,
+              model: result.model,
+              durationMs: result.durationMs,
+            };
+          },
+        });
+      }
+      break;
+
+    case "rent_vehicle":
+      if (ctx.input.vehicleData?.rentalId && ctx.entities.startDate && ctx.entities.endDate) {
+        agents.push({
+          agent: "rental",
+          run: async (c) => {
+            const result = await quoteRental({
+              rentalId: String(c.input.vehicleData!.rentalId),
+              startDate: String(c.entities.startDate),
+              endDate: String(c.entities.endDate),
+            });
+            const cardId = `rental-${nanoid(6)}`;
+            const directive: UIDirective = {
+              type: "show_card",
+              card: "rental_quote",
+              cardId,
+              data: result,
+            };
+            c.directives.push(directive);
+            await emitInline(c, directive);
+            return {
+              result,
+              confidence: result.confidence,
+              costUsd: result.costUsd,
+              tokens: result.tokens,
+              model: result.model,
+              durationMs: result.durationMs,
+            };
+          },
+        });
+      }
+      break;
+
+    case "negotiate_price":
+      // Negotiation orchestration (buyer action veya counter)
+      if (ctx.input.vehicleData?.negotiationId || ctx.input.vehicleData?.vehicleId) {
+        agents.push({
+          agent: "negotiation",
+          run: async (c) => {
+            const negotiationId = String(c.input.vehicleData?.negotiationId ?? "");
+            const action = (c.input.vehicleData?.action as "start" | "offer" | "counter" | "accept" | "reject") ?? "start";
+            const result = await negotiateTurn({
+              threadId: negotiationId,
+              vehicleId: String(c.input.vehicleData?.vehicleId ?? c.input.vehicleId ?? ""),
+              buyerId: c.input.userId ?? "anonymous",
+              action,
+              offerAmount: c.input.vehicleData?.offerAmount as number | undefined,
+              buyerMaxOffer: c.input.vehicleData?.buyerMaxOffer as number | undefined,
+              sellerMinAccept: c.input.vehicleData?.sellerMinAccept as number | undefined,
+              locale: c.input.locale,
+            });
+
+            const cardId = `negotiation-${nanoid(6)}`;
+            const directive: UIDirective = {
+              type: "show_card",
+              card: "negotiation_offer",
+              cardId,
+              data: {
+                negotiationId: result.negotiationId,
+                status: result.status,
+                offers: result.offers,
+                currentOffer: result.currentOffer,
+                agreedAmount: result.agreedAmount,
+                agentSuggestion: result.agentSuggestion,
+                turnNumber: result.turnNumber,
+                maxTurns: result.maxTurns,
+              },
+            };
+            c.directives.push(directive);
+            await emitInline(c, directive);
+            return {
+              result,
+              confidence: 0.85,
+              costUsd: result.costUsd,
+              tokens: result.tokens,
+              model: result.model,
+              durationMs: result.durationMs,
+            };
+          },
+        });
+      }
+      break;
+
+    case "support_help":
     case "general_chat":
     default:
-      // İleride support agent burada devreye girecek
+      // Support agent triage
+      agents.push({
+        agent: "support",
+        run: async (c) => {
+          const result = await handleSupport({
+            message: c.input.text,
+            locale: c.input.locale,
+            userId: c.input.userId,
+          });
+
+          const cardId = `support-${nanoid(6)}`;
+          const directive: UIDirective = {
+            type: "show_card",
+            card: "ai_assistant_reply",
+            cardId,
+            data: {
+              reply: result.reply,
+              intent: result.intent,
+              needsHuman: result.needsHuman,
+            },
+          };
+          c.directives.push(directive);
+          await emitInline(c, directive);
+
+          // Stream message da gönder (chat için)
+          const streamMsg: UIDirective = {
+            type: "stream_message",
+            messageId: nanoid(),
+            role: "assistant",
+            content: result.reply,
+            delta: false,
+          };
+          c.directives.push(streamMsg);
+          await emitInline(c, streamMsg);
+
+          return {
+            result,
+            confidence: result.confidence,
+            costUsd: result.costUsd,
+            tokens: result.tokens,
+            model: result.model,
+            durationMs: result.durationMs,
+          };
+        },
+      });
       break;
   }
 

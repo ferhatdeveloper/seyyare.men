@@ -3,6 +3,8 @@ import cors from "@fastify/cors";
 import sensible from "@fastify/sensible";
 import rateLimit from "@fastify/rate-limit";
 import { orchestratorRoutes } from "./routes/orchestrator.js";
+import { voiceRoutes } from "./routes/voice.js";
+import { adminRoutes } from "./routes/admin.js";
 import { db } from "./lib/db.js";
 import { redis } from "./lib/redis.js";
 
@@ -34,6 +36,8 @@ app.get("/health", async () => ({
 }));
 
 await app.register(orchestratorRoutes, { prefix: "/" });
+await app.register(voiceRoutes, { prefix: "/" });
+await app.register(adminRoutes, { prefix: "/" });
 
 try {
   await db.connect();
