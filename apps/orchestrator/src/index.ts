@@ -5,6 +5,7 @@ import rateLimit from "@fastify/rate-limit";
 import { orchestratorRoutes } from "./routes/orchestrator.js";
 import { voiceRoutes } from "./routes/voice.js";
 import { adminRoutes } from "./routes/admin.js";
+import { agentToolsRoutes } from "./routes/agent-tools.js";
 import { db } from "./lib/db.js";
 import { redis } from "./lib/redis.js";
 
@@ -38,6 +39,7 @@ app.get("/health", async () => ({
 await app.register(orchestratorRoutes, { prefix: "/" });
 await app.register(voiceRoutes, { prefix: "/" });
 await app.register(adminRoutes, { prefix: "/" });
+await app.register(agentToolsRoutes, { prefix: "/" });
 
 try {
   await db.connect();

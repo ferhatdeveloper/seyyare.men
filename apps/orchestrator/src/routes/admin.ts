@@ -4,6 +4,7 @@
 import type { FastifyInstance } from "fastify";
 import { db } from "../lib/db.js";
 import { redis } from "../lib/redis.js";
+import { getAgentPerformance, compareModels, budget, type BudgetConfig } from "../ab-testing.js";
 
 interface AgentMetrics {
   agent: string;
@@ -215,5 +216,73 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     const keys = await redis.client.keys(pattern);
     if (keys.length > 0) await redis.client.del(keys);
     return reply.send({ cleared: keys.length, pattern });
+  });
+
+  /**
+   * GET /admin/agents/:agent/performance
+   * Belirli bir agent'ın A/B test performans verisi
+   */
+  app.get<{ Params: { agent: string }; Querystring: { days?: string } }>(
+    "/admin/agents/:agent/performance",
+    async (req, reply) => {
+      const days = Number(req.query.days ?? 7);
+      const perf = await getAgentPerformance(req.params.agent, days);
+      if (!perf) return reply.code(404).send({ error: "no_data" });
+      return reply.send(perf);
+    },
+  );
+
+  /**
+   * GET /admin/agents/compare
+   * Modelleri karşılaştır (cost, duration, success_rate)
+   */
+  app.get<{ Querystring: { agent?: string; metric?: string; days?: string } }>(
+    "/admin/agents/compare",
+    async (req, reply) => {
+      const agent = req.query.agent ?? "pricing";
+      const metric = (req.query.metric ?? "cost") as "cost" | "duration" | "success_rate";
+      const days = Number(req.query.days ?? 7);
+      const result = await compareModels({ agent, metric, days });
+      return reply.send({ agent, metric, days, models: result });
+    },
+  );
+
+  /**
+   * GET /admin/threads/:id/budget
+   * Thread'in cost budget durumu
+   */
+  app.get<{ Params: { id: string }; Querystring: { max?: string; soft?: string } }>(
+    "/admin/threads/:id/budget",
+    async (req, reply) => {
+      const config: BudgetConfig = {
+        threadId: req.params.id,
+        maxCostUsd: Number(req.query.max ?? 5),
+        softLimitPct: Number(req.query.soft ?? 0.8),
+      };
+      const status = await budget.getStatus(config);
+      return reply.send(status);
+    },
+  );
+
+  /**
+   * POST /admin/experiments/:name/assign
+   * A/B test variant assignment
+   */
+  app.post<{
+    Params: { name: string };
+    Body: { userId?: string; threadId?: string; variants: Record<string, { model: string; weight: number }> };
+  }>("/admin/experiments/:name/assign", async (req, reply) => {
+    const { assignVariant } = await import("../ab-testing.js");
+    const result = await assignVariant({
+      experiment: req.params.name,
+      userId: req.body.userId,
+      threadId: req.body.threadId,
+      config: {
+        experiment: req.params.name,
+        variants: req.body.variants,
+        stickyBy: req.body.userId ? "user" : "thread",
+      },
+    });
+    return reply.send(result);
   });
 }

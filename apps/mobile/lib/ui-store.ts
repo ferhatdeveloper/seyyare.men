@@ -13,7 +13,8 @@ export type CardType =
   | "ai_assistant_reply"
   | "rental_quote"
   | "recognition_result"
-  | "validation_warning";
+  | "validation_warning"
+  | "compare";
 
 export interface ToastMessage {
   id: string;
@@ -35,21 +36,38 @@ export interface LoadingState {
   startedAt: number;
 }
 
+export interface StreamMessage {
+  messageId: string;
+  role: "assistant" | "system";
+  content: string;
+  isStreaming: boolean;
+  finishReason?: string;
+  tokens?: number;
+  costUsd?: number;
+  durationMs?: number;
+  startedAt: number;
+}
+
 interface UIStore {
-  // Cards (üst üste birikebilir)
+  // Cards
   cards: Record<string, { type: CardType; data: unknown; createdAt: number }>;
   // Form auto-fill state
   forms: Record<string, FormAutofill>;
   // Active loading
   loading: Record<string, LoadingState>;
-  // Toasts (auto-expire)
+  // Toasts
   toasts: ToastMessage[];
-  // Intent (debug)
-  intent: string | null;
+  // Stream messages (chat için — accumulation)
+  streamMessages: Record<string, StreamMessage>;
+  // Intent debug
+  intent: { primary: string; secondary: string[]; confidence: number } | null;
   // Last error
   lastError: string | null;
 
   applyDirective: (directive: unknown) => void;
+  applyAgentEvent: (event: { type: string; agent: string; data: unknown }) => void;
+  applyTokenChunk: (messageId: string, role: "assistant" | "system", chunk: string, fullText: string) => void;
+  applyStreamComplete: (messageId: string, finishReason: string, tokens?: number) => void;
   applyFormAutofill: (formId: string, fields: Record<string, unknown>) => void;
   applyShowCard: (cardId: string, card: CardType, data: unknown) => void;
   applyHideCard: (cardId: string) => void;
@@ -57,7 +75,7 @@ interface UIStore {
   applyHideLoading: (agent: string) => void;
   applyToast: (message: string, level: ToastMessage["level"], durationMs?: number) => void;
   applyNavigation: (route: string, params?: Record<string, string>) => void;
-  applyIntent: (intent: string) => void;
+  applyIntent: (primary: string, secondary: string[], confidence: number) => void;
   dismissToast: (id: string) => void;
   clear: () => void;
 }
@@ -67,6 +85,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
   forms: {},
   loading: {},
   toasts: [],
+  streamMessages: {},
   intent: null,
   lastError: null,
 
@@ -95,16 +114,77 @@ export const useUIStore = create<UIStore>((set, get) => ({
         get().applyNavigation(d.route as string, d.params as Record<string, string> | undefined);
         break;
       case "stream_message":
-        // Stream mesajlarını chat'e ilet (şu an handle edilmiyor)
+        get().applyStreamComplete(
+          (d.messageId as string) ?? nanoid(),
+          (d.role as "assistant" | "system") ?? "assistant",
+          d.content as string,
+          d.finishReason as string,
+          d.tokens as number | undefined,
+        );
         break;
       case "validation":
-        // Validation error'ları form'a bağla
-        break;
       case "human_in_loop_required":
-        // HIL akışını tetikle
+        // Gelecekte: validation form'a bağlanır
         break;
     }
   },
+
+  applyAgentEvent: (event) => {
+    if (event.type === "directive") {
+      get().applyDirective(event.data);
+    } else if (event.type === "token") {
+      const data = event.data as { messageId: string; content: string; fullText?: string; role?: string };
+      get().applyTokenChunk(
+        data.messageId,
+        (data.role as "assistant" | "system") ?? "assistant",
+        data.content,
+        data.fullText ?? data.content,
+      );
+    } else if (event.type === "intent") {
+      const data = event.data as { intent: string; confidence: number };
+      get().applyIntent(data.intent, [], data.confidence);
+    } else if (event.type === "error") {
+      const data = event.data as { error: string };
+      get().applyToast(data.error, "error", 4000);
+    }
+  },
+
+  applyTokenChunk: (messageId, role, chunk, fullText) =>
+    set((s) => {
+      const existing = s.streamMessages[messageId];
+      if (existing && existing.isStreaming) {
+        return {
+          streamMessages: {
+            ...s.streamMessages,
+            [messageId]: { ...existing, content: fullText },
+          },
+        };
+      }
+      return {
+        streamMessages: {
+          ...s.streamMessages,
+          [messageId]: {
+            messageId,
+            role,
+            content: fullText,
+            isStreaming: true,
+            startedAt: Date.now(),
+          },
+        },
+      };
+    }),
+
+  applyStreamComplete: (messageId, _finishReason, tokens) =>
+    set((s) => {
+      const existing = s.streamMessages[messageId];
+      if (!existing) return {};
+      return {
+        streamMessages: {
+          ...s.streamMessages,
+          [messageId]: { ...existing, isStreaming: false, tokens },
+        },
+      };
+    }),
 
   applyFormAutofill: (formId, fields) =>
     set((s) => ({
@@ -137,32 +217,28 @@ export const useUIStore = create<UIStore>((set, get) => ({
     set((s) => {
       const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       const toast: ToastMessage = { id, message, level, durationMs, createdAt: Date.now() };
-      // Auto-expire
-      setTimeout(() => {
-        get().dismissToast(id);
-      }, durationMs);
+      setTimeout(() => get().dismissToast(id), durationMs);
       return { toasts: [...s.toasts, toast] };
     }),
 
   applyNavigation: (route, params) => {
-    // Dinamik navigation: route bir path, params opsiyonel query string
-    // RN'de router.push(expo-router) çağrısı gerekiyor
-    // Burada signal olarak store'da tutulur, ekranlar useEffect ile dinleyebilir
-    // Şimdilik console.log + opsiyonel olarak global event fırlatılabilir
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("seyyare:navigate", { detail: { route, params } }));
     }
   },
 
-  applyIntent: (intent) => set({ intent }),
+  applyIntent: (primary, secondary, confidence) => set({ intent: { primary, secondary, confidence } }),
 
   dismissToast: (id) =>
     set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 
-  clear: () => set({ cards: {}, forms: {}, loading: {}, toasts: [], intent: null, lastError: null }),
+  clear: () => set({ cards: {}, forms: {}, loading: {}, toasts: [], streamMessages: {}, intent: null, lastError: null }),
 }));
 
-// Hook helper
+function nanoid(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export function useCards() {
   return useUIStore((s) => s.cards);
 }
@@ -174,4 +250,7 @@ export function useLoading() {
 }
 export function useFormAutofill(formId: string) {
   return useUIStore((s) => s.forms[formId]);
+}
+export function useStreamMessages() {
+  return useUIStore((s) => s.streamMessages);
 }

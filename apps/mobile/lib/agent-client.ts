@@ -1,6 +1,5 @@
 // Agent client — orchestrator ile iletişim için yüksek seviye API
 
-import { router } from "expo-router";
 import { streamAgent, type AgentEvent, type StreamOptions } from "./sse";
 import { useUIStore } from "./ui-store";
 import { auth } from "./auth";
@@ -31,42 +30,15 @@ export function runAgent(req: AgentRequest): AgentRunHandle {
       ...req,
       token,
       onEvent: (event: AgentEvent) => {
-        // Debug log
-        if (__DEV__) {
-          console.log("[agent]", event.type, event.agent);
-        }
-
-        switch (event.type) {
-          case "directive":
-            store.applyDirective(event.data);
-            break;
-          case "cost":
-            // Maliyet tracking UI'da gösterilebilir
-            break;
-          case "token":
-            // Stream token (chat UI için)
-            break;
-          case "intent":
-            store.applyIntent((event.data as { intent?: string })?.intent ?? "");
-            break;
-          case "done":
-            // Completion
-            break;
-          case "error":
-            store.applyToast(
-              (event.data as { error?: string })?.error ?? "Bilinmeyen hata",
-              "error",
-            );
-            break;
-          case "tool_call":
-          case "tool_result":
-          case "log":
-            // İsteğe bağlı debug
-            break;
-        }
+        // Apply event to UI store (handles directive, token, intent, error)
+        store.applyAgentEvent({
+          type: event.type,
+          agent: event.agent,
+          data: event.data,
+        });
       },
       onError: (err) => {
-        store.applyToast(`AI bağlantı hatası: ${err.message}`, "error");
+        store.applyToast(`AI bağlantı hatası: ${err.message}`, "error", 4000);
       },
       onDone: () => {
         // SSE tamamlandı
@@ -83,7 +55,7 @@ export function runAgent(req: AgentRequest): AgentRunHandle {
 }
 
 /**
- * Convenience: ilan verme akışı
+ * Convenience: ilan verme akışı (fotoğraflar + text → vision + pricing + fraud)
  */
 export function startListingFlow(images: string[], locale: string): AgentRunHandle {
   return runAgent({
@@ -110,5 +82,71 @@ export function startTranslationFlow(text: string, locale: string): AgentRunHand
   return runAgent({
     text: `Çevir: ${text}`,
     locale,
+  });
+}
+
+/**
+ * Convenience: AI Asistan sohbet (streaming)
+ */
+export function startAssistantChat(message: string, locale: string, threadId?: string): AgentRunHandle {
+  return runAgent({
+    text: message,
+    locale,
+    threadId,
+  });
+}
+
+/**
+ * Convenience: hasar tespiti
+ */
+export function startDamageDetection(images: string[], locale: string): AgentRunHandle {
+  return runAgent({
+    text: "Hasar tespiti yap",
+    images,
+    locale,
+  });
+}
+
+/**
+ * Convenience: fiyat önerisi
+ */
+export function getPriceSuggestion(vehicle: {
+  make: string;
+  model: string;
+  year: number;
+  mileageKm?: number;
+  condition?: string;
+  countryCode?: string;
+  locale: string;
+}): AgentRunHandle {
+  return runAgent({
+    text: `Fiyat öner: ${vehicle.make} ${vehicle.model} ${vehicle.year}`,
+    locale: vehicle.locale,
+    vehicleData: vehicle as unknown as Record<string, unknown>,
+  });
+}
+
+/**
+ * Convenience: pazarlık turu
+ */
+export function sendNegotiationOffer(opts: {
+  negotiationId: string;
+  vehicleId: string;
+  action: "start" | "counter" | "accept" | "reject";
+  offerAmount?: number;
+  buyerMaxOffer?: number;
+  locale: string;
+}): AgentRunHandle {
+  return runAgent({
+    text: `Negotiation ${opts.action}`,
+    locale: opts.locale,
+    vehicleId: opts.vehicleId,
+    vehicleData: {
+      negotiationId: opts.negotiationId,
+      vehicleId: opts.vehicleId,
+      action: opts.action,
+      offerAmount: opts.offerAmount,
+      buyerMaxOffer: opts.buyerMaxOffer,
+    },
   });
 }
