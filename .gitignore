@@ -1,0 +1,59 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+.expo/
+.expo-shared/
+web-build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# IDE
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+.DS_Store
+*.pem
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Tests / Coverage
+coverage/
+.nyc_output/
+*.lcov
+
+# Expo
+expo-env.d.ts
+
+# iOS / Android (Expo managed ise genelde yok)
+ios/
+android/
+
+# Docker
+.docker-data/
+postgres-data/
+minio-data/
+
+# Misc
+.cache/
+.parcel-cache/
