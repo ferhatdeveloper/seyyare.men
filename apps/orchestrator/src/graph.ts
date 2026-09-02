@@ -35,6 +35,7 @@ export interface OrchestrationContext {
   intentReasoning: string;
   entities: Record<string, unknown>;
   directives: UIDirective[];
+  emit?: (directive: UIDirective) => Promise<void>;
 }
 
 export interface AgentRun {
@@ -68,6 +69,9 @@ export async function orchestrate(
     });
   }
 
+  // threadId'yi context içine geri yaz (emit için kullanılacak)
+  input.threadId = thread.threadId;
+
   // User message'ı kaydet
   await checkpointer.appendMessage(thread.threadId, {
     role: "user",
@@ -85,8 +89,14 @@ export async function orchestrate(
     directives: [],
   };
 
+  // emit'i context'e inject et (agent run'larının içinden erişebilsin)
+  const localEmit = async (directive: UIDirective) => {
+    await emit(directive);
+  };
+  ctx.emit = localEmit;
+
   // 2. Intent classification
-  emit({
+  await localEmit({
     type: "show_loading",
     agent: "intent",
     message: "Anlaşılıyor...",
@@ -125,12 +135,18 @@ export async function orchestrate(
     totalTokens: thread.totalTokens + intentResult.tokens,
   });
 
-  emit({
+  await localEmit({
     type: "hide_loading",
     agent: "intent",
   });
 
-  emit({
+  // Intent bilgisini ayrı bir event olarak da gönder (mobil debug için)
+  await localEmit({
+    type: "directive",
+    data: { type: "intent_classified", intent: intentResult.intent, confidence: intentResult.confidence },
+  });
+
+  await localEmit({
     type: "toast",
     message: intentResult.reasoning || "Anlaşıldı",
     level: "info",
@@ -144,7 +160,7 @@ export async function orchestrate(
   for (const agentRun of agents) {
     tasks.push(
       (async () => {
-        emit({
+        await localEmit({
           type: "show_loading",
           agent: agentRun.agent,
           message: `${agentRun.agent} çalışıyor...`,
@@ -169,6 +185,18 @@ export async function orchestrate(
             confidence: r.confidence,
           });
 
+          // Cost event gönder (debug için)
+          await localEmit({
+            type: "directive",
+            data: {
+              type: "agent_complete",
+              agent: agentRun.agent,
+              cost: r.costUsd,
+              tokens: r.tokens,
+              model: r.model,
+            },
+          });
+
           // Thread güncelle
           const fresh = await checkpointer.get(thread.threadId);
           if (fresh) {
@@ -178,7 +206,7 @@ export async function orchestrate(
             });
           }
 
-          emit({
+          await localEmit({
             type: "hide_loading",
             agent: agentRun.agent,
           });
@@ -200,12 +228,12 @@ export async function orchestrate(
             error: msg,
           });
 
-          emit({
+          await localEmit({
             type: "hide_loading",
             agent: agentRun.agent,
           });
 
-          emit({
+          await localEmit({
             type: "toast",
             message: `${agentRun.agent} başarısız: ${msg}`,
             level: "warning",
@@ -623,4 +651,7 @@ import { MODELS } from "./openrouter.js";
 async function emitInline(ctx: OrchestrationContext, directive: UIDirective): Promise<void> {
   // External emitter tarafından yakalanacak
   ctx.directives.push(directive);
+  if (ctx.emit) {
+    await ctx.emit(directive);
+  }
 }

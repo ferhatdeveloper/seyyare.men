@@ -1,5 +1,5 @@
 import { Sparkles } from "lucide-react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
@@ -17,23 +17,18 @@ import {
   ImageUploader,
   type UploadedImage,
 } from "../../components/ImageUploader";
-import {
-  PricePredictor,
-  PriceSuggestionCard,
-} from "../../components/PricePredictor";
-import { api } from "../../lib/api";
-
-interface PriceSuggestion {
-  suggestedPrice: number;
-  rangeLow: number;
-  rangeHigh: number;
-  factors: Array<{ factor: string; impact: "positive" | "negative" | "neutral"; weight: number; value: string }>;
-  explanation: string;
-  marketComparisons: number;
-}
+import { PriceBreakdown } from "../../components/agent/PriceBreakdown";
+import { CardHost } from "../../components/agent/CardHost";
+import { runAgent } from "../../lib/agent-client";
+import { useUIStore } from "../../lib/ui-store";
 
 export default function SellScreen() {
   const { t } = useTranslation();
+  const forms = useUIStore((s) => s.forms);
+
+  // Agent-driven form auto-fill state
+  const autofill = forms["sell-form"];
+  const recognized = autofill?.fields ?? {};
 
   const [images, setImages] = useState<UploadedImage[]>([]);
   const [make, setMake] = useState("");
@@ -42,17 +37,30 @@ export default function SellScreen() {
   const [mileage, setMileage] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
-  const [priceSuggestion, setPriceSuggestion] = useState<PriceSuggestion | null>(null);
-  const [generatingDesc, setGeneratingDesc] = useState(false);
+  const [activeRun, setActiveRun] = useState(false);
 
-  const onRecognized = (rec: NonNullable<UploadedImage["recognized"]>) => {
-    setMake(rec.make);
-    setModel(rec.model);
-    if (rec.year) setYear(String(rec.year));
-    Alert.alert(
-      "AI Tanıma Tamamlandı",
-      `${rec.make} ${rec.model}${rec.year ? ` (${rec.year})` : ""} tespit edildi. Lütfen doğrulayın.`,
-    );
+  // Agent'tan gelen form_autofill directive'lerini state'e uygula
+  useEffect(() => {
+    if (recognized.make && !make) setMake(String(recognized.make));
+    if (recognized.model && !model) setModel(String(recognized.model));
+    if (recognized.year && !year) setYear(String(recognized.year));
+  }, [recognized, make, model, year]);
+
+  const handleImagesSelected = async (newImages: UploadedImage[]) => {
+    setImages(newImages);
+
+    // İlk görsel için orchestrator'ı tetikle (vision + pricing + fraud paralel)
+    if (newImages.length > 0) {
+      setActiveRun(true);
+      const run = runAgent({
+        text: "İlan vermek istiyorum, araç fotoğrafımı yükledim",
+        images: newImages.slice(0, 3).map((img) => img.uri),
+        locale: "tr",
+        vehicleData: { source: "sell_screen" },
+      });
+      await run.promise;
+      setActiveRun(false);
+    }
   };
 
   const generateDescription = async () => {
@@ -60,32 +68,18 @@ export default function SellScreen() {
       Alert.alert(t("errors.validationError"));
       return;
     }
-    setGeneratingDesc(true);
+    setActiveRun(true);
     try {
-      const res = await fetch(`${process.env.EXPO_PUBLIC_AI_URL}/ai/generate-description`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          vehicle: {
-            make,
-            model,
-            year: Number(year),
-            mileageKm: Number(mileage) || undefined,
-            condition: "used",
-          },
-          locale: "tr",
-          tone: "professional",
-          maxLength: 600,
-        }),
-      }).then((r) => r.json());
-
-      if (res.description) {
-        setDescription(res.description);
-      }
-    } catch {
-      Alert.alert(t("errors.serverError"));
+      const run = runAgent({
+        text: `İlan açıklaması üret: ${make} ${model} ${year}, ${mileage || "?"} km`,
+        locale: "tr",
+      });
+      // UI store'dan description'ı çekmek için polling
+      await run.promise;
+      // TODO: stream_message directive'ten description'ı al
+      Alert.alert("Açıklama üretildi", "Kart ekranında görüntülenebilir");
     } finally {
-      setGeneratingDesc(false);
+      setActiveRun(false);
     }
   };
 
@@ -94,11 +88,24 @@ export default function SellScreen() {
       Alert.alert(t("sell.priceRequired"));
       return;
     }
-    Alert.alert(
-      "Yayınla",
-      "İlan taslağı admin onayından sonra yayına alınacak.",
-      [{ text: t("common.confirm") }],
-    );
+    setActiveRun(true);
+    try {
+      const run = runAgent({
+        text: `İlanı yayınla: ${make} ${model} ${year}, ${price}`,
+        locale: "tr",
+        vehicleData: {
+          source: "publish",
+          make,
+          model,
+          year: Number(year),
+          price: Number(price),
+        },
+      });
+      await run.promise;
+      Alert.alert("Yayınlandı", "İlanınız admin onayından sonra yayına alınacak");
+    } finally {
+      setActiveRun(false);
+    }
   };
 
   return (
@@ -114,10 +121,13 @@ export default function SellScreen() {
 
           {/* Image uploader */}
           <View className="px-5 pt-5">
-            <ImageUploader images={images} onChange={setImages} onRecognized={onRecognized} />
+            <ImageUploader
+              images={images}
+              onChange={handleImagesSelected}
+            />
           </View>
 
-          {/* AI Vision hint */}
+          {/* AI Vision hint (görsel yoksa) */}
           {images.length === 0 && (
             <View className="mx-5 mt-3 bg-primary-50 border border-primary-100 rounded-xl p-3">
               <Text className="text-primary-800 text-xs leading-4">
@@ -126,6 +136,11 @@ export default function SellScreen() {
               </Text>
             </View>
           )}
+
+          {/* Agent-driven cards (recognition result, price suggestion, fraud check) */}
+          <View className="px-5 mt-4">
+            <CardHost />
+          </View>
 
           {/* Basic Info */}
           <View className="px-5 mt-5">
@@ -169,7 +184,7 @@ export default function SellScreen() {
             </View>
           </View>
 
-          {/* Price + AI Suggestion */}
+          {/* Price + AI Suggestion button */}
           <View className="px-5 mt-5">
             <Text className="text-sm font-semibold text-slate-700 mb-2">
               Fiyat <Text className="text-red-500">*</Text>
@@ -183,40 +198,24 @@ export default function SellScreen() {
             />
 
             {make && model && year && (
-              <View className="mb-4">
-                <PricePredictor
-                  vehicle={{
-                    make,
-                    model,
-                    year: Number(year),
-                    mileageKm: Number(mileage) || undefined,
-                  }}
-                  onSuggestion={(s) =>
-                    setPriceSuggestion({
-                      suggestedPrice: s.suggestedPrice,
-                      rangeLow: s.rangeLow,
-                      rangeHigh: s.rangeHigh,
-                      factors: s.factors,
-                      explanation: s.explanation,
-                      marketComparisons: s.marketComparisons,
-                    })
-                  }
-                  currentPrice={Number(price) || 0}
-                />
-              </View>
-            )}
-
-            {priceSuggestion && (
-              <PriceSuggestionCard
-                suggested={priceSuggestion.suggestedPrice}
-                rangeLow={priceSuggestion.rangeLow}
-                rangeHigh={priceSuggestion.rangeHigh}
-                currency="USD"
-                factors={priceSuggestion.factors}
-                explanation={priceSuggestion.explanation}
-                marketComparisons={priceSuggestion.marketComparisons}
-                currentPrice={Number(price) || undefined}
-              />
+              <TouchableOpacity
+                className="bg-amber-500 rounded-xl py-3 items-center mb-3"
+                onPress={() =>
+                  runAgent({
+                    text: `Fiyat öner: ${make} ${model} ${year}`,
+                    locale: "tr",
+                    vehicleData: { make, model, year: Number(year) },
+                  })
+                }
+                disabled={activeRun}
+              >
+                <View className="flex-row items-center">
+                  <Sparkles size={14} color="#FFFFFF" />
+                  <Text className="ml-2 text-white font-bold text-sm">
+                    {t("sell.getPriceSuggestion")}
+                  </Text>
+                </View>
+              </TouchableOpacity>
             )}
           </View>
 
@@ -229,7 +228,7 @@ export default function SellScreen() {
               <TouchableOpacity
                 className="flex-row items-center bg-primary-50 rounded-full px-3 py-1"
                 onPress={generateDescription}
-                disabled={generatingDesc}
+                disabled={activeRun}
               >
                 <Sparkles size={12} color="#0EA5E9" />
                 <Text className="text-primary-700 text-xs font-semibold ml-1">
@@ -250,10 +249,13 @@ export default function SellScreen() {
           {/* Publish */}
           <TouchableOpacity
             className="mx-5 mt-6 bg-primary-600 rounded-2xl py-4 items-center"
-            style={{ backgroundColor: "#0284C7" }}
+            style={{ backgroundColor: "#0284C7", opacity: activeRun ? 0.5 : 1 }}
+            disabled={activeRun}
             onPress={publishListing}
           >
-            <Text className="text-white font-bold text-base">{t("sell.publish")}</Text>
+            <Text className="text-white font-bold text-base">
+              {activeRun ? "AI çalışıyor..." : t("sell.publish")}
+            </Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>

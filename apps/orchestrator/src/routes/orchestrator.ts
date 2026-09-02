@@ -2,7 +2,7 @@
 // POST /agents/run — ana orkestrasyon
 // GET /agents/threads/:id — thread state
 
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
 import { createSSE, sendDone } from "../sse.js";
@@ -36,9 +36,9 @@ const RunBodySchema = z.object({
 export async function orchestratorRoutes(app: FastifyInstance): Promise<void> {
   /**
    * POST /agents/run
-   * SSE streaming endpoint
+   * SSE streaming endpoint — orchestrator'dan mobil'e directive stream
    */
-  app.post("/agents/run", async (req, reply) => {
+  app.post("/agents/run", async (req: FastifyRequest, reply: FastifyReply) => {
     const parsed = RunBodySchema.safeParse(req.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: "validation_error", details: parsed.error.flatten() });
@@ -46,26 +46,45 @@ export async function orchestratorRoutes(app: FastifyInstance): Promise<void> {
     const input = parsed.data;
     const userId = getUserId(req);
 
-    // SSE reply
+    // SSE reply — Fastify reply.hijack ile stream başlat
     reply.hijack();
     const writer = createSSE(reply);
 
     try {
-      await orchestrate(input, async (directive: UIDirective) => {
+      // Emit callback — her directive SSE üzerinden stream edilir
+      const emit = async (directive: UIDirective) => {
         writer.send({
           type: "directive",
           agent: "orchestrator",
-          threadId: "", // threadId orchestrator içinde set edilecek
+          threadId: input.threadId ?? "",
           data: directive,
         });
+      };
+
+      const ctx = await orchestrate(input, emit);
+
+      // Completion: total cost + threadId'yi gönder
+      writer.send({
+        type: "cost",
+        agent: "orchestrator",
+        threadId: ctx.thread.threadId,
+        data: {
+          tokens: ctx.thread.totalTokens,
+          costUsd: ctx.thread.totalCostUsd,
+          threadId: ctx.thread.threadId,
+        },
       });
-      sendDone(writer, "");
+
+      // Done event'i gönder (mobil taraf SSE'yi kapatır)
+      sendDone(writer, ctx.thread.threadId);
     } catch (err) {
+      const msg = err instanceof Error ? err.message : "orchestration_failed";
+      app.log.error({ err: msg }, "orchestration failed");
       writer.send({
         type: "error",
         agent: "orchestrator",
-        threadId: "",
-        data: { error: err instanceof Error ? err.message : "orchestration_failed" },
+        threadId: input.threadId ?? "",
+        data: { error: msg },
       });
       writer.close();
     }
@@ -73,7 +92,7 @@ export async function orchestratorRoutes(app: FastifyInstance): Promise<void> {
 
   /**
    * GET /agents/threads/:id
-   * Thread state
+   * Thread state getir
    */
   app.get<{ Params: { id: string } }>("/agents/threads/:id", async (req, reply) => {
     const { id } = req.params;
@@ -115,6 +134,28 @@ export async function orchestratorRoutes(app: FastifyInstance): Promise<void> {
         premium: ["anthropic/claude-3.5-sonnet", "openai/gpt-4o"],
         free: ["meta-llama/llama-3.3-70b-instruct:free", "google/gemma-3-12b-it:free"],
       },
+    };
+  });
+
+  /**
+   * GET /agents/intents
+   * Bilinen intent listesi (debug için)
+   */
+  app.get("/agents/intents", async () => {
+    return {
+      intents: [
+        "create_listing",
+        "search_vehicles",
+        "view_vehicle",
+        "negotiate_price",
+        "rent_vehicle",
+        "translate_content",
+        "check_damage",
+        "recommend_similar",
+        "fraud_check",
+        "support_help",
+        "general_chat",
+      ],
     };
   });
 }
