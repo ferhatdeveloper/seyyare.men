@@ -138,6 +138,31 @@ services:
     networks:
       - seyyare-net
 
+  orchestrator:
+    build:
+      context: ./apps/orchestrator
+      dockerfile: Dockerfile
+    container_name: seyyare-orchestrator
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      PORT: ${ORCHESTRATOR_PORT}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379${REDIS_PASSWORD:+:${REDIS_PASSWORD}}
+      JWT_SECRET: ${JWT_SECRET}
+      PGRST_JWT_SECRET: ${PGRST_JWT_SECRET}
+    ports:
+      - "${ORCHESTRATOR_PORT}:${ORCHESTRATOR_PORT}"
+    networks:
+      - seyyare-net
+
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: seyyare-pgadmin
@@ -161,6 +186,7 @@ services:
       - postgrest
       - auth-service
       - ai-service
+      - orchestrator
     volumes:
       - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./infra/nginx/certs:/etc/nginx/certs:ro

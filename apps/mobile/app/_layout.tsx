@@ -9,6 +9,9 @@ import { I18nManager, Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
+import { CardHost } from "../components/agent/CardHost";
+import { LoadingOverlay } from "../components/agent/LoadingOverlay";
+import { ToastHost } from "../components/agent/ToastHost";
 import { isRTL, type LocaleCode } from "../lib/locales";
 
 export default function RootLayout() {
@@ -26,7 +29,6 @@ export default function RootLayout() {
     [],
   );
 
-  // Şimdilik varsayılan LTR. Dil seçim ekranında RTL aktif olacak.
   const initialLocale: LocaleCode = "tr";
   const rtl = isRTL(initialLocale);
   if (Platform.OS !== "web" && I18nManager.isRTL !== rtl) {
@@ -51,7 +53,16 @@ export default function RootLayout() {
               name="vehicle/[id]"
               options={{ headerShown: true, title: "" }}
             />
+            <Stack.Screen
+              name="rental/[id]"
+              options={{ headerShown: true, title: "" }}
+            />
           </Stack>
+
+          {/* Multi-agent orchestrator UI overlay'leri */}
+          <CardHost />
+          <ToastHost />
+          <LoadingOverlay />
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
