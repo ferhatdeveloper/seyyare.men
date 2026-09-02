@@ -11,6 +11,8 @@ import { descriptionRoutes } from "./routes/description.js";
 import { damageRoutes } from "./routes/damage.js";
 import { assistantRoutes } from "./routes/assistant.js";
 import { rentalRoutes } from "./routes/rental.js";
+import { fraudRoutes } from "./routes/fraud.js";
+import { analyticsRoutes } from "./routes/analytics.js";
 
 const PORT = Number(process.env.PORT ?? 4000);
 const NODE_ENV = process.env.NODE_ENV ?? "development";
@@ -43,6 +45,8 @@ await app.register(descriptionRoutes);
 await app.register(damageRoutes);
 await app.register(assistantRoutes);
 await app.register(rentalRoutes);
+await app.register(fraudRoutes);
+await app.register(analyticsRoutes);
 
 try {
   // DB ve Redis bağlantılarını doğrula
