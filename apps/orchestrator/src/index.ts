@@ -6,6 +6,7 @@ import { orchestratorRoutes } from "./routes/orchestrator.js";
 import { voiceRoutes } from "./routes/voice.js";
 import { adminRoutes } from "./routes/admin.js";
 import { agentToolsRoutes } from "./routes/agent-tools.js";
+import { centralMonitoringRoutes } from "./routes/central-monitoring.js";
 import { db } from "./lib/db.js";
 import { redis } from "./lib/redis.js";
 
@@ -29,6 +30,7 @@ await app.register(rateLimit, { max: 200, timeWindow: "1 minute" });
 app.get("/health", async () => ({
   status: "ok",
   service: "orchestrator",
+  architecture: "central-agent-multi-worker",
   env: NODE_ENV,
   openrouter: !!process.env.OPENROUTER_API_KEY,
   db: "connected",
@@ -40,12 +42,14 @@ await app.register(orchestratorRoutes, { prefix: "/" });
 await app.register(voiceRoutes, { prefix: "/" });
 await app.register(adminRoutes, { prefix: "/" });
 await app.register(agentToolsRoutes, { prefix: "/" });
+await app.register(centralMonitoringRoutes, { prefix: "/" });
 
 try {
-  await db.connect();
-  await redis.connect();
+  await db.query("SELECT 1");
+  await redis.client.ping();
+
   await app.listen({ port: PORT, host: "0.0.0.0" });
-  app.log.info(`Orchestrator listening on port ${PORT}`);
+  app.log.info(`Orchestrator (Central Agent) listening on port ${PORT}`);
 } catch (err) {
   app.log.error(err);
   process.exit(1);
@@ -55,7 +59,7 @@ const shutdown = async () => {
   app.log.info("Shutting down orchestrator...");
   await app.close();
   await db.end();
-  await redis.quit();
+  await redis.client.quit();
   process.exit(0);
 };
 process.on("SIGTERM", shutdown);

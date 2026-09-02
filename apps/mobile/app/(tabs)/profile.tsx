@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { LogIn, Globe, Heart, Bookmark, Bell, Info } from "lucide-react-native";
+import { LogIn, Globe, Heart, Bookmark, Bell, Info, Cpu } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
@@ -60,9 +60,10 @@ export default function ProfileScreen() {
 
         {/* Menu Items */}
         <View className="mt-6">
-          <MenuItem icon={<Heart size={20} color="#64748B" />} label={t("profile.favorites")} />
+          <MenuItem icon={<Heart size={20} color="#64748B" />} label={t("profile.favorites")} onPress={() => router.push("/favorites")} />
           <MenuItem icon={<Bookmark size={20} color="#64748B" />} label={t("profile.savedSearches")} />
           <MenuItem icon={<Bell size={20} color="#64748B" />} label={t("profile.notifications")} />
+          <MenuItem icon={<Cpu size={20} color="#0EA5E9" />} label="Agent Inspector" onPress={() => router.push("/agents")} />
           <MenuItem icon={<Info size={20} color="#64748B" />} label={t("profile.about")} />
         </View>
 
@@ -114,9 +115,9 @@ export default function ProfileScreen() {
   );
 }
 
-function MenuItem({ icon, label }: { icon: React.ReactNode; label: string }) {
+function MenuItem({ icon, label, onPress }: { icon: React.ReactNode; label: string; onPress?: () => void }) {
   return (
-    <TouchableOpacity className="px-5 py-4 flex-row items-center border-b border-slate-100">
+    <TouchableOpacity className="px-5 py-4 flex-row items-center border-b border-slate-100" onPress={onPress}>
       {icon}
       <Text className="ml-3 text-base text-slate-700 flex-1">{label}</Text>
       <Text className="text-slate-300">›</Text>
