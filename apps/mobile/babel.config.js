@@ -7,7 +7,16 @@ module.exports = function (api) {
     ],
     plugins: [
       "expo-router/babel",
-      "react-native-reanimated/plugin",
+      // Worklets babel plugin (expo-router 6 animasyonları için zorunlu)
+      // React Native Worklets paketinden geliyor
+      // Native Android modülü olmadan da Babel plugin çalışıyor
+      [
+        require.resolve("react-native-worklets/plugin"),
+        {
+          // Native modülü devre dışı (Android Gradle build skip eder)
+          disableNative: true,
+        },
+      ],
     ],
   };
 };

@@ -12,6 +12,13 @@ import type { UIDirective } from "./ui-directive.js";
 import { createTaskPlan, executeTaskPlan, type TaskPlan, type TaskResult } from "./task-planner.js";
 import { workerRegistry, type WorkerTask, type WorkerResult } from "./worker-registry.js";
 import { agentMessageBus, type AgentMessage } from "./agent-protocol.js";
+import {
+  cache,
+  getCachedIntent,
+  cacheIntentResult,
+  createWarmupEvent,
+} from "./cache.js";
+import { langfuse } from "./langfuse.js";
 
 export interface CentralAgentInput {
   threadId?: string;
@@ -252,6 +259,26 @@ export const centralAgent = {
 
     // Thread complete
     await checkpointer.complete(thread.threadId);
+
+    // Langfuse: trace tamamla
+    langfuse.trackEvent({
+      traceId,
+      name: "orchestration_complete",
+      metadata: {
+        tasksCompleted: workerResults.filter((r) => r.success).length,
+        tasksFailed: workerResults.filter((r) => !r.success).length,
+        totalCostUsd: totalCost,
+        totalDurationMs: Date.now() - startTime,
+        primaryIntent: ctx.primaryIntent,
+      },
+    });
+    langfuse.flush().catch((err) => console.warn("[central] langfuse flush:", err));
+
+    // Intent classification cache'e yaz
+    await cacheIntentResult(input.text, input.locale, {
+      intent: intentResult.primary.intent,
+      confidence: intentResult.primary.confidence,
+    });
 
     return {
       directives: composed.directives,

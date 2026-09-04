@@ -1,15 +1,12 @@
 {
-  "name": "@seyyare/mobile",
+  "name": "seyyare-mobile",
   "version": "0.1.0",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
-    "lint": "eslint . --ext .ts,.tsx",
-    "typecheck": "tsc --noEmit",
-    "clean": "rm -rf .expo node_modules"
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
@@ -32,18 +29,18 @@
     "expo-status-bar": "~3.0.0",
     "i18next": "^23.15.1",
     "lucide-react-native": "^0.460.0",
-    "nativewind": "^4.1.23",
+    "nativewind": "^2.0.11",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-hook-form": "^7.53.0",
     "react-i18next": "^15.0.2",
-    "react-native": "0.81.5",
+    "react-native": "0.81.4",
     "react-native-gesture-handler": "~2.28.0",
-    "react-native-reanimated": "~4.1.0",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-web": "~0.21.0",
-    "tailwindcss": "^3.4.13",
+    "react-native-worklets": "~0.6.0",
+    "tailwindcss": "^3.4.19",
     "zod": "^3.23.8",
     "zustand": "^5.0.0"
   },
@@ -51,7 +48,7 @@
     "@babel/core": "^7.25.2",
     "@expo/cli": "54.0.27",
     "@types/react": "~19.1.10",
-    "babel-preset-expo": "~54.0.12",
+    "babel-preset-expo": "~14.0.0",
     "eslint": "^9.12.0",
     "eslint-config-expo": "~10.0.0",
     "typescript": "~5.9.0"

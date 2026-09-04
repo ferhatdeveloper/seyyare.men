@@ -1,28 +1,48 @@
-// Negotiation Agent — multi-turn fiyat pazarlığı
-// State machine: alıcı teklif → satıcı cevap → agent moderasyon → anlaşma/red
-// Private reservation prices: alıcı max WTP + satıcı min accept (asla client'a sızmaz)
+// Negotiation Agent — multi-turn fiyat + koşul + süre + takas pazarlığı
+// Genişletilmiş: artık sadece fiyat değil, teslim koşulları, garanti süresi, takas da destekleniyor
 
 import { z } from "zod";
 import { openrouter, MODELS } from "../openrouter.js";
 import { db } from "../lib/db.js";
 import { nanoid } from "nanoid";
 
+export type NegotiationAction =
+  | "start"
+  | "offer"           // Yeni teklif (fiyat veya koşul)
+  | "counter"         // Karşı teklif (satıcı veya alıcı)
+  | "accept"
+  | "reject"
+  | "modify_terms"    // Koşulları değiştir (garanti, teslim, takas)
+
+export interface NegotiationTerms {
+  price: number;
+  currency: string;
+  // Genişletilmiş koşullar
+  warrantyMonths?: number; // Garanti süresi (ay)
+  deliveryDays?: number; // Teslimat süresi (gün)
+  tradeInVehicleId?: string; // Takas aracı
+  tradeInValue?: number; // Takas değeri
+  paymentMethod?: "cash" | "bank_transfer" | "installment" | "crypto";
+  inspectionDays?: number; // Muayene süresi
+}
+
 export interface NegotiationInput {
   threadId: string;
   vehicleId: string;
   buyerId: string;
-  action: "start" | "offer" | "counter" | "accept" | "reject";
-  offerAmount?: number;
-  buyerMaxOffer?: number; // PRIVATE — sadece backend'de
-  sellerMinAccept?: number; // PRIVATE — sadece backend'de
+  action: NegotiationAction;
+  // Genişletilmiş: artık sadece offerAmount değil, tüm terms
+  offerTerms?: Partial<NegotiationTerms>;
+  buyerMaxTerms?: Partial<NegotiationTerms>; // PRIVATE — alıcının max kabul edebileceği
+  sellerMinTerms?: Partial<NegotiationTerms>; // PRIVATE — satıcının min kabul edebileceği
+  counterBy?: "buyer" | "seller";
   locale?: string;
 }
 
 export interface NegotiationOffer {
   id: string;
   from: "buyer" | "seller" | "agent";
-  amount: number;
-  currency: string;
+  terms: NegotiationTerms;
   message: string;
   turnNumber: number;
   createdAt: number;
@@ -34,8 +54,9 @@ export interface NegotiationResult {
   status: "active" | "agreed" | "rejected" | "expired";
   offers: NegotiationOffer[];
   currentOffer: NegotiationOffer | null;
-  agreedAmount?: number;
-  agentSuggestion?: { amount: number; reasoning: string };
+  agreedTerms?: NegotiationTerms;
+  agentSuggestion?: { terms: NegotiationTerms; reasoning: string };
+  termAnalysis?: TermAnalysis;
   turnNumber: number;
   maxTurns: number;
   model: string;
@@ -44,28 +65,55 @@ export interface NegotiationResult {
   tokens: number;
 }
 
-const NEGOTIATION_PROMPT = `Sen bir araç fiyat pazarlığı moderatörü olarak çalışıyorsun. Hem alıcıyı hem satıcıyı anlaşmaya yaklaştıracak adil bir teklif üret.
+interface TermAnalysis {
+  priceGap: number; // Alıcı max - satıcı min farkı
+  priceGapPct: number;
+  termsAligned: boolean;
+  recommendedAction: "accept" | "counter" | "wait" | "reject";
+  reason: string;
+}
+
+const TERMS_NEGOTIATION_PROMPT = `Sen bir araç fiyat ve koşul pazarlığı moderatörüsün. Taraflar arasında adil bir anlaşma sağlamaya çalışıyorsun.
 
 CONTEXT:
-- Piyasa ortanca fiyatı: X USD
-- Alıcının max teklifi: A USD (PRIVATE — asla alıcıya söyleme)
-- Satıcının min kabulü: B USD (PRIVATE — asla satıcıya söyleme)
-- Mevcut teklifler: [liste]
+- Piyasa ortanca fiyatı: X
+- Alıcı max teklif/willingness: A (PRIVATE — asla alıcıya söyleme)
+- Satıcı min kabul: B (PRIVATE — asla satıcıya söyleme)
+- Mevcut teklif: [tur listesi]
 - Tur: N / max 10
 
-Kurallar:
-- Eğer teklifler [A, B] aralığındaysa → orta noktaya yakın teklif üret
-- Eğer alıcı çok düşük teklif verdiyse → satıcıyı kaybetme, %5-10 artış öner
-- Eğer satıcı çok yüksek teklif verdiyse → alıcıyı kaybetme, %5-10 indirim öner
-- 7. turdan sonra walk-away threshold'a yaklaşıyorsan agresif ol
-- 10. turda anlaşma yoksa "agreement_unlikely" de
-- PRIVATE reservation prices ASLA ifşa etme
+NEGOTIABLE TERMS:
+- price: USD cinsinden fiyat
+- warrantyMonths: garanti süresi (ay, 0-36)
+- deliveryDays: teslimat süresi (gün, 0-30)
+- tradeInVehicleId + tradeInValue: takas
+- paymentMethod: cash | bank_transfer | installment | crypto
+- inspectionDays: muayene süresi (gün, 0-14)
+
+KURALLAR:
+1. PRIVATE reservation prices/terms ASLA ifşa etme
+2. Her teklifte tüm terms'ü değerlendir:
+   - Fiyat gap'i %10'dan azsa → close to deal, küçük concession öner
+   - Garanti/teslim/takas ile fiyat dengesi kurulabilir
+   - 7. turdan sonra walk-away threshold'a yaklaşıyorsan agresif ol
+   - 10. turda anlaşma yoksa → "agreement_unlikely" de
+3. Suggestion'da hangi terms'ü değiştirdiğini açıkça belirt
+4. message alanında Türkçe, samimi, max 2 cümle
 
 Sadece JSON:
 {
-  "suggestion": {"amount": <USD>, "reasoning": "<TR 1-2 cümle>"},
-  "tone": "neutral|aggressive|conciliatory",
-  "agreementLikely": <boolean>
+  "suggestion": {
+    "terms": {"price": <USD>, "warrantyMonths": <int>, "deliveryDays": <int>, "paymentMethod": "<>"},
+    "reasoning": "<TR 1-2 cümle>"
+  },
+  "termAnalysis": {
+    "priceGap": <A - B>,
+    "priceGapPct": <gap %>,
+    "termsAligned": <bool — alıcı max >= satıcı min mi?>,
+    "recommendedAction": "accept" | "counter" | "wait" | "reject",
+    "reason": "<TR 1 cümle>"
+  },
+  "agreementLikely": <bool>
 }`;
 
 export async function negotiateTurn(input: NegotiationInput): Promise<NegotiationResult> {
@@ -78,8 +126,6 @@ export async function negotiateTurn(input: NegotiationInput): Promise<Negotiatio
     status: string;
     buyer_max_offer: string | number | null;
     seller_min_accept: string | number | null;
-    current_offer_amount: string | number | null;
-    current_offer_by: string | null;
     turn_count: number;
     max_turns: number;
     agreed_amount: string | number | null;
@@ -93,8 +139,11 @@ export async function negotiateTurn(input: NegotiationInput): Promise<Negotiatio
   let negRow = negotiation.rows[0];
 
   if (!negRow && input.action === "start") {
-    // Yeni negotiation oluştur
-    const vehicle = await db.query<{ seller_id: string; price_amount: string | number; price_currency: string }>(
+    const vehicle = await db.query<{
+      seller_id: string;
+      price_amount: string | number;
+      price_currency: string;
+    }>(
       `SELECT seller_id, price_amount, price_currency FROM public.vehicles WHERE id = $1`,
       [input.vehicleId],
     );
@@ -108,8 +157,8 @@ export async function negotiateTurn(input: NegotiationInput): Promise<Negotiatio
         input.vehicleId,
         input.buyerId,
         vehicle.rows[0].seller_id,
-        input.buyerMaxOffer ?? null,
-        input.sellerMinAccept ?? null,
+        input.buyerMaxTerms?.price ?? null,
+        input.sellerMinTerms?.price ?? null,
       ],
     );
     const newId = inserted.rows[0].id;
@@ -122,68 +171,35 @@ export async function negotiateTurn(input: NegotiationInput): Promise<Negotiatio
 
   if (!negRow) throw new Error("negotiation_not_found");
   if (negRow.status !== "active") {
-    return {
-      threadId: input.threadId,
-      negotiationId: negRow.id,
-      status: negRow.status as NegotiationResult["status"],
-      offers: Array.isArray(negRow.messages) ? (negRow.messages as NegotiationOffer[]) : [],
-      currentOffer:
-        negRow.current_offer_amount !== null
-          ? {
-              id: nanoid(),
-              from: negRow.current_offer_by as NegotiationOffer["from"],
-              amount: Number(negRow.current_offer_amount),
-              currency: "USD",
-              message: "",
-              turnNumber: negRow.turn_count,
-              createdAt: Date.now(),
-            }
-          : null,
-      agreedAmount: negRow.agreed_amount ? Number(negRow.agreed_amount) : undefined,
-      turnNumber: negRow.turn_count,
-      maxTurns: negRow.max_turns,
-      model: "rule-based",
-      costUsd: 0,
-      durationMs: 0,
-      tokens: 0,
-    };
+    return buildResultFromRow(input.threadId, negRow, []);
   }
 
-  const offers: NegotiationOffer[] = Array.isArray(negRow.messages) ? (negRow.messages as NegotiationOffer[]) : [];
-  const buyerMax = input.buyerMaxOffer ?? (negRow.buyer_max_offer ? Number(negRow.buyer_max_offer) : null);
-  const sellerMin = input.sellerMinAccept ?? (negRow.seller_min_accept ? Number(negRow.seller_min_accept) : null);
+  // 2. Mevcut offer'ları yükle
+  const offers: NegotiationOffer[] = Array.isArray(negRow.messages)
+    ? (negRow.messages as NegotiationOffer[])
+    : [];
 
-  // 2. Action handling
+  // 3. Private reservation terms (PUBLIC'e ASLA ifşa edilmez)
+  const buyerMaxTerms: Partial<NegotiationTerms> = {
+    price: input.buyerMaxTerms?.price ?? (negRow.buyer_max_offer ? Number(negRow.buyer_max_offer) : undefined),
+    currency: "USD",
+    ...input.buyerMaxTerms,
+  };
+  const sellerMinTerms: Partial<NegotiationTerms> = {
+    price: input.sellerMinTerms?.price ?? (negRow.seller_min_accept ? Number(negRow.seller_min_accept) : undefined),
+    currency: "USD",
+    ...input.sellerMinTerms,
+  };
+
+  // 4. Action handling
   if (input.action === "accept") {
-    // Kabul
     await db.query(
       `UPDATE public.negotiation_threads
        SET status = 'agreed', agreed_amount = current_offer_amount, agreed_at = now()
        WHERE id = $1`,
       [negRow.id],
     );
-    return {
-      threadId: input.threadId,
-      negotiationId: negRow.id,
-      status: "agreed",
-      offers,
-      currentOffer: negRow.current_offer_amount ? {
-        id: nanoid(),
-        from: negRow.current_offer_by as NegotiationOffer["from"],
-        amount: Number(negRow.current_offer_amount),
-        currency: "USD",
-        message: "",
-        turnNumber: negRow.turn_count,
-        createdAt: Date.now(),
-      } : null,
-      agreedAmount: negRow.current_offer_amount ? Number(negRow.current_offer_amount) : undefined,
-      turnNumber: negRow.turn_count,
-      maxTurns: negRow.max_turns,
-      model: "rule-based",
-      costUsd: 0,
-      durationMs: 0,
-      tokens: 0,
-    };
+    return buildResultFromRow(input.threadId, negRow, offers);
   }
 
   if (input.action === "reject") {
@@ -191,116 +207,178 @@ export async function negotiateTurn(input: NegotiationInput): Promise<Negotiatio
       `UPDATE public.negotiation_threads SET status = 'rejected' WHERE id = $1`,
       [negRow.id],
     );
-    return {
-      threadId: input.threadId,
-      negotiationId: negRow.id,
-      status: "rejected",
-      offers,
-      currentOffer: null,
-      turnNumber: negRow.turn_count,
-      maxTurns: negRow.max_turns,
-      model: "rule-based",
-      costUsd: 0,
-      durationMs: 0,
-      tokens: 0,
-    };
+    return { ...buildResultFromRow(input.threadId, negRow, offers), status: "rejected" };
   }
 
-  // 3. Yeni teklif ekle
+  // 5. Yeni teklif ekle (start, offer, counter, modify_terms)
   const turnNumber = negRow.turn_count + 1;
+  const fromParty: NegotiationOffer["from"] =
+    input.action === "start" ? "buyer" : (input.counterBy ?? "buyer");
+
+  // Default current offer (vehicles tablosundan)
+  const defaultTerms: NegotiationTerms = input.offerTerms
+    ? { ...input.offerTerms, currency: input.offerTerms.currency ?? "USD" }
+    : {
+        price: 0,
+        currency: "USD",
+      };
+
+  if (!defaultTerms.price && defaultTerms.price !== 0) {
+    throw new Error("offer_price_required");
+  }
+
   const newOffer: NegotiationOffer = {
     id: nanoid(),
-    from: input.action === "counter" ? "buyer" : "buyer",
-    amount: input.offerAmount ?? 0,
-    currency: "USD",
-    message: "",
+    from: fromParty,
+    terms: defaultTerms,
+    message: input.offerTerms?.message ?? "",
     turnNumber,
     createdAt: Date.now(),
   };
 
-  if (!newOffer.amount) throw new Error("offer_amount_required");
-
   offers.push(newOffer);
 
-  // 4. Agent suggestion (LLM)
-  let suggestion: { amount: number; reasoning: string } | undefined;
+  // 6. LLM ile suggestion + analysis
+  let agentSuggestion: { terms: NegotiationTerms; reasoning: string } | undefined;
+  let termAnalysis: TermAnalysis | undefined;
   let costUsd = 0;
   let durationMs = 0;
   let tokens = 0;
-  let modelUsed = "rule-based";
+  let modelUsed = "rule-based+v1";
 
-  if (buyerMax !== null && sellerMin !== null && turnNumber <= negRow.max_turns) {
-    const prompt = `${NEGOTIATION_PROMPT}
+  // Piyasa ortanca fiyat (referans)
+  const marketRes = await db.query<{ median: string | number }>(
+    `SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price_amount) as median
+     FROM public.vehicles
+     WHERE make_id = (SELECT make_id FROM public.vehicles WHERE id = $1)
+       AND model = (SELECT model FROM public.vehicles WHERE id = $1)
+       AND status = 'active'`,
+    [input.vehicleId],
+  );
+  const marketMedian = Number(marketRes.rows[0]?.median ?? 0);
 
-PIYASA: Ortanca fiyat
-ALICI MAX (PRIVATE): ${buyerMax}
-SATICI MIN (PRIVATE): ${sellerMin}
-MEVCUT TEKLİFLER: ${offers.map((o) => `Tur ${o.turnNumber}: ${o.from} ${o.amount}`).join(", ")}
+  if (buyerMaxTerms.price && sellerMinTerms.price && turnNumber <= negRow.max_turns) {
+    const prompt = `${TERMS_NEGOTIATION_PROMPT}
+
+Piyasa ortanca: ${marketMedian}
+ALICI MAX (PRIVATE): ${JSON.stringify(buyerMaxTerms)}
+SATICI MIN (PRIVATE): ${JSON.stringify(sellerMinTerms)}
+MEVCUT TEKLİFLER: ${offers.slice(-3).map((o) => `Tur ${o.turnNumber}: ${o.from} ${JSON.stringify(o.terms)}`).join("; ")}
 TUR: ${turnNumber} / ${negRow.max_turns}
-
-Teklif: ${input.offerAmount} (alıcıdan)
-Asla PRIVATE fiyatları ifşa etme.`;
-
-    const result = await openrouter.chat({
-      model: MODELS.premium_negotiation,
-      messages: [{ role: "user", content: prompt }],
-      responseFormat: { type: "json_object" },
-      temperature: 0.3,
-      maxTokens: 200,
-    });
+YENİ TEKLİF: ${JSON.stringify(defaultTerms)}`;
 
     try {
-      const parsed = JSON.parse(result.content.trim()) as { suggestion?: { amount?: number; reasoning?: string } };
-      if (parsed.suggestion?.amount) {
-        suggestion = {
-          amount: Math.round(parsed.suggestion.amount),
-          reasoning: parsed.suggestion.reasoning ?? "",
+      const result = await openrouter.chat({
+        model: MODELS.premium_negotiation,
+        messages: [{ role: "user", content: prompt }],
+        responseFormat: { type: "json_object" },
+        temperature: 0.3,
+        maxTokens: 500,
+      });
+
+      try {
+        const parsed = JSON.parse(result.content.trim()) as {
+          suggestion?: { terms?: NegotiationTerms; reasoning?: string };
+          termAnalysis?: TermAnalysis;
+          agreementLikely?: boolean;
         };
+
+        if (parsed.suggestion?.terms && parsed.suggestion.terms.price !== undefined) {
+          agentSuggestion = {
+            terms: { ...parsed.suggestion.terms, currency: parsed.suggestion.terms.currency ?? "USD" },
+            reasoning: parsed.suggestion.reasoning ?? "",
+          };
+        }
+        termAnalysis = parsed.termAnalysis;
+
+        // Anlaşma sağlandıysa otomatik kabul
+        if (
+          termAnalysis?.termsAligned &&
+          parsed.agreementLikely &&
+          agentSuggestion &&
+          buyerMaxTerms.price! >= agentSuggestion.terms.price &&
+          agentSuggestion.terms.price >= sellerMinTerms.price!
+        ) {
+          newOffer.terms = agentSuggestion.terms;
+        }
+      } catch {
+        // JSON parse hatası — default ile devam
       }
-    } catch {}
 
-    costUsd = result.costUsd;
-    durationMs = result.durationMs;
-    tokens = result.usage.totalTokens;
-    modelUsed = result.model;
-
-    // Anlaşma sağlandıysa otomatik kabul
-    if (suggestion && buyerMax >= sellerMin && suggestion.amount >= sellerMin && suggestion.amount <= buyerMax) {
-      // Negotiation turn-based, henüz agreement yok
+      costUsd = result.costUsd;
+      durationMs = result.durationMs;
+      tokens = result.usage.totalTokens;
+      modelUsed = result.model;
+    } catch (err) {
+      console.warn("[negotiation] LLM suggestion failed:", err);
     }
   }
 
-  // 5. DB güncelle
+  // 7. DB güncelle
   await db.query(
     `UPDATE public.negotiation_threads
      SET messages = $2,
          turn_count = $3,
-         current_offer_amount = $4,
-         current_offer_by = 'buyer'
+         current_offer_amount = $4
      WHERE id = $1`,
-    [negRow.id, JSON.stringify(offers), turnNumber, newOffer.amount],
+    [negRow.id, JSON.stringify(offers), turnNumber, newOffer.terms.price],
   );
 
-  // Max turns kontrolü
+  // 8. Max turns kontrolü
+  let status: NegotiationResult["status"] = "active";
   if (turnNumber >= negRow.max_turns) {
     await db.query(
       `UPDATE public.negotiation_threads SET status = 'expired' WHERE id = $1 AND status = 'active'`,
       [negRow.id],
     );
+    status = "expired";
   }
 
   return {
     threadId: input.threadId,
     negotiationId: negRow.id,
-    status: turnNumber >= negRow.max_turns ? "expired" : "active",
+    status,
     offers,
     currentOffer: newOffer,
-    agentSuggestion: suggestion,
+    agreedTerms: undefined,
+    agentSuggestion,
+    termAnalysis,
     turnNumber,
     maxTurns: negRow.max_turns,
     model: modelUsed,
     costUsd,
     durationMs,
     tokens,
+  };
+}
+
+function buildResultFromRow(
+  threadId: string,
+  row: {
+    id: string;
+    status: string;
+    turn_count: number;
+    max_turns: number;
+    agreed_amount: string | number | null;
+    current_offer_amount: string | number | null;
+    messages: unknown;
+  },
+  offers: NegotiationOffer[],
+): NegotiationResult {
+  return {
+    threadId,
+    negotiationId: row.id,
+    status: row.status as NegotiationResult["status"],
+    offers,
+    currentOffer: offers[offers.length - 1] ?? null,
+    agreedTerms: row.agreed_amount
+      ? { price: Number(row.agreed_amount), currency: "USD" }
+      : undefined,
+    turnNumber: row.turn_count,
+    maxTurns: row.max_turns,
+    model: "rule-based",
+    costUsd: 0,
+    durationMs: 0,
+    tokens: 0,
   };
 }

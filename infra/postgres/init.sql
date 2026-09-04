@@ -1,6 +1,10 @@
 -- Seyyare.men PostgreSQL init script
 -- Extensions ve ana roller
 
+-- pgvector (vector similarity search — Recommendation Agent)
+-- Bu image (pgvector/pgvector:pg16) pgvector ile gelir, ayrıca yüklüyoruz güvende olmak için
+CREATE EXTENSION IF NOT EXISTS vector;
+-- PostGIS yerine geçen coğrafi extension
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;

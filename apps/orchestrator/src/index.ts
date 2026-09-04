@@ -7,6 +7,7 @@ import { voiceRoutes } from "./routes/voice.js";
 import { adminRoutes } from "./routes/admin.js";
 import { agentToolsRoutes } from "./routes/agent-tools.js";
 import { centralMonitoringRoutes } from "./routes/central-monitoring.js";
+import { abTestingRoutes } from "./routes/ab-testing.js";
 import { db } from "./lib/db.js";
 import { redis } from "./lib/redis.js";
 
@@ -43,6 +44,7 @@ await app.register(voiceRoutes, { prefix: "/" });
 await app.register(adminRoutes, { prefix: "/" });
 await app.register(agentToolsRoutes, { prefix: "/" });
 await app.register(centralMonitoringRoutes, { prefix: "/" });
+await app.register(abTestingRoutes, { prefix: "/" });
 
 try {
   await db.query("SELECT 1");
