@@ -21,17 +21,17 @@ interface SellerProfile {
 }
 
 export default function SellerProfileScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams();
   const { t } = useTranslation();
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["seller", id],
-    queryFn: () => api.get<SellerProfile[]>(`/user_profiles?user_id=eq.${id}`).then((arr) => arr[0]),
+    queryFn: () => api.get(`/user_profiles?user_id=eq.${id}`).then((arr) => arr[0]),
   });
 
   const { data: listings } = useQuery({
     queryKey: ["seller-listings", id],
-    queryFn: () => api.get<VehicleListItem[]>(`/vehicles?seller_id=eq.${id}&status=eq.active&order=created_at.desc`),
+    queryFn: () => api.get(`/vehicles?seller_id=eq.${id}&status=eq.active&order=created_at.desc`),
   });
 
   if (isLoading) {
@@ -71,7 +71,7 @@ export default function SellerProfileScreen() {
           <View className="bg-white px-5 py-6 items-center border-b border-slate-200">
             <View className="w-24 h-24 rounded-full bg-primary-100 items-center justify-center mb-3">
               <Text className="text-3xl font-bold text-primary-700">
-                {(profile.display_name ?? "?").charAt(0).toUpperCase()}
+                {(profile?.display_name ?? "?").charAt(0).toUpperCase()}
               </Text>
             </View>
 

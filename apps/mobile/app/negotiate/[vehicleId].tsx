@@ -31,7 +31,7 @@ interface NegotiationData {
 }
 
 export default function NegotiateScreen() {
-  const { vehicleId } = useLocalSearchParams<{ vehicleId: string }>();
+  const { vehicleId } = useLocalSearchParams();
   const { t } = useTranslation();
   const cards = useUIStore((s) => s.cards);
 

@@ -58,7 +58,7 @@ interface PriceQuote {
 }
 
 export default function rentalDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams();
   const { t } = useTranslation();
   const qc = useQueryClient();
 
@@ -73,7 +73,7 @@ export default function rentalDetailScreen() {
   const { data: rental, isLoading } = useQuery({
     queryKey: ["rental", id],
     queryFn: () =>
-      api.get<Rental[]>(
+      api.get(
         `/rentals?id=eq.${id}&select=*,vehicle:vehicles(id,title_original,year,media:vehicle_media(url,is_cover)),owner:users!owner_id(user_profiles(display_name,verified,rating_avg))`,
       ).then((arr) => arr[0]),
   });

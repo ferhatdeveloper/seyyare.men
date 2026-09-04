@@ -88,14 +88,14 @@ interface VehicleDetail {
 }
 
 export default function VehicleDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams();
   const { t, i18n } = useTranslation();
   const qc = useQueryClient();
   const [mediaIdx, setMediaIdx] = useState(0);
 
   const { data: vehicle, isLoading } = useQuery({
     queryKey: ["vehicle", id, i18n.language],
-    queryFn: () => api.get<VehicleDetail>(`/vehicles?id=eq.${id}&select=*,ai_vehicle_analysis(*),vehicle_media(*),seller:users!seller_id(user_profiles(*))`),
+    queryFn: () => api.get(`/vehicles?id=eq.${id}&select=*,ai_vehicle_analysis(*),vehicle_media(*),seller:users!seller_id(user_profiles(*))`),
     enabled: !!id,
   });
 
@@ -116,7 +116,7 @@ export default function VehicleDetailScreen() {
       return;
     }
     try {
-      const res = await api.post<{ id: string }>("/conversations", {
+      const res = await api.post("/conversations", {
         type: "direct",
         vehicle_id: id,
       });

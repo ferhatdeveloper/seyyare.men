@@ -2,21 +2,14 @@ module.exports = function (api) {
   api.cache(true);
   return {
     presets: [
-      ["babel-preset-expo", { jsxImportSource: "nativewind" }],
-      "nativewind/babel",
+      ["babel-preset-expo", { "react-runtime": "automatic" }],
     ],
     plugins: [
       "expo-router/babel",
-      // Worklets babel plugin (expo-router 6 animasyonları için zorunlu)
-      // React Native Worklets paketinden geliyor
-      // Native Android modülü olmadan da Babel plugin çalışıyor
-      [
-        require.resolve("react-native-worklets/plugin"),
-        {
-          // Native modülü devre dışı (Android Gradle build skip eder)
-          disableNative: true,
-        },
-      ],
     ],
+    parserOpts: {
+      // Babel 7.x: ?? ve || karışımına otomatik parantez ekle
+      createParenthesizedExpressions: true,
+    },
   };
 };

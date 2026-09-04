@@ -12,7 +12,7 @@ import { useLocalSearchParams } from "expo-router";
 
 export default function SearchScreen() {
   const { t, i18n } = useTranslation();
-  const params = useLocalSearchParams<{ q?: string; make?: string; fuel?: string; transmission?: string }>();
+  const params = useLocalSearchParams();
 
   const [searchText, setSearchText] = useState(params.q ?? "");
   const [filters, setFilters] = useState<VehicleFilters>(() => ({
@@ -31,7 +31,7 @@ export default function SearchScreen() {
   // Reference data (brands)
   const { data: refs } = useQuery({
     queryKey: ["reference", i18n.language],
-    queryFn: () => api.rpc<{ brands: Array<{ id: number; name: string }> }>("list_reference_data", { p_locale: i18n.language }),
+    queryFn: () => api.rpc("list_reference_data", { p_locale: i18n.language }),
     staleTime: 60 * 60 * 1000,
   });
 
@@ -39,8 +39,8 @@ export default function SearchScreen() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["vehicles", filters, i18n.language],
     queryFn: () =>
-      api.rpc<VehicleListItem[]>("search_vehicles", {
-        p_q: filters.q ?? searchText || null,
+      api.rpc("search_vehicles", {
+        p_q: (filters.q ?? searchText) || null,
         p_make_ids: filters.makeIds ?? null,
         p_body_type_ids: filters.bodyTypeIds ?? null,
         p_fuel_type_ids: filters.fuelTypeIds ?? null,

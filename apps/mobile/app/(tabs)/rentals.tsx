@@ -36,7 +36,7 @@ export default function RentalsScreen() {
   const { data, isLoading } = useQuery({
     queryKey: ["rentals", i18n.language],
     queryFn: () =>
-      api.get<Rental[]>(
+      api.get(
         "/rentals?status=eq.active&select=*,vehicle:vehicles(id,title_original,year,media:vehicle_media(url,is_cover))&order=created_at.desc&limit=30",
       ),
   });

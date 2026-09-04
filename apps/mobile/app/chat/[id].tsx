@@ -27,7 +27,7 @@ interface Message {
 }
 
 export default function ChatScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams();
   const { t } = useTranslation();
   const qc = useQueryClient();
   const [text, setText] = useState("");
@@ -35,13 +35,13 @@ export default function ChatScreen() {
 
   const { data: messages, isLoading } = useQuery({
     queryKey: ["messages", id],
-    queryFn: () => api.get<Message[]>(`/messages?conversation_id=eq.${id}&order=created_at.asc`),
+    queryFn: () => api.get(`/messages?conversation_id=eq.${id}&order=created_at.asc`),
     refetchInterval: 5000,
   });
 
   const sendMutation = useMutation({
     mutationFn: (body: string) =>
-      api.post<Message>("/messages", { conversation_id: id, body }),
+      api.post("/messages", { conversation_id: id, body }),
     onSuccess: () => {
       setText("");
       void qc.invalidateQueries({ queryKey: ["messages", id] });

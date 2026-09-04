@@ -14,7 +14,7 @@ export default function FavoritesScreen() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["favorites"],
     queryFn: () =>
-      api.get<VehicleListItem[]>(
+      api.get(
         "/favorites?select=vehicle:vehicles(*,media:vehicle_media(*))&order=created_at.desc",
       ),
   });

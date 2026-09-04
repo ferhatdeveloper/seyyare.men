@@ -3,7 +3,7 @@ import { ChevronLeft, Loader, Volume2 } from "lucide-react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { Audio } from "expo-av";
+import { Audio } from "expo-audio";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { VoiceInput } from "../components/agent/VoiceInput";
@@ -80,7 +80,7 @@ export default function VoiceScreen() {
 
   const playAudio = async (base64: string, mimeType: string) => {
     try {
-      // Base64 → Blob → File URI (expo-av)
+      // Base64 → Blob → File URI (expo-audio)
       const binaryString = atob(base64);
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
@@ -89,11 +89,11 @@ export default function VoiceScreen() {
       const blob = new Blob([bytes], { type: mimeType });
       const url = URL.createObjectURL(blob);
 
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true });
-      const { sound } = await Audio.Sound.createAsync({ uri: url });
-      await sound.playAsync();
-
-      URL.revokeObjectURL(url);
+      // expo-audio v1.x: createAudioPlayer + play
+      const player = await Audio.createAudioPlayer(url);
+      player.play();
+      // Player otomatik temizlenmez — release sonrası
+      setTimeout(() => player.release(), 30000);
     } catch (err) {
       console.warn("[voice] audio playback failed:", err);
     }

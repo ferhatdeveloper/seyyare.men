@@ -100,7 +100,7 @@ export function VehicleCard({ vehicle, onFavoriteChange, initialFavorite = false
       {/* Info */}
       <View className="p-4">
         <Text className="text-base font-bold text-slate-900" numberOfLines={1}>
-          {vehicle.title ?? `${vehicle.make_name ?? ""} ${vehicle.model ?? ""}`.trim() || "Araç"}
+          {vehicle.title ?? ((vehicle.make_name ?? "") + " " + (vehicle.model ?? "")).trim() || "Araç"}
         </Text>
 
         <View className="flex-row flex-wrap mt-1.5">

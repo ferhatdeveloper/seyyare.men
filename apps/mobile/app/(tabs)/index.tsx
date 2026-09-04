@@ -15,7 +15,7 @@ export default function HomeScreen() {
   const { data: recent, isLoading } = useQuery({
     queryKey: ["vehicles-recent", i18n.language],
     queryFn: () =>
-      api.rpc<VehicleListItem[]>("search_vehicles", {
+      api.rpc("search_vehicles", {
         p_locale: i18n.language,
         p_sort_by: "created_at",
         p_sort_dir: "desc",
@@ -26,7 +26,7 @@ export default function HomeScreen() {
 
   const { data: refs } = useQuery({
     queryKey: ["reference", i18n.language],
-    queryFn: () => api.rpc<{ brands: Array<{ id: number; name: string }> }>("list_reference_data", { p_locale: i18n.language }),
+    queryFn: () => api.rpc("list_reference_data", { p_locale: i18n.language }),
     staleTime: 60 * 60 * 1000,
   });
 

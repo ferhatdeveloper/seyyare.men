@@ -15,6 +15,7 @@
     "date-fns": "^4.1.0",
     "expo": "~54.0.0",
     "expo-asset": "~12.0.0",
+    "expo-audio": "^57.0.4",
     "expo-camera": "~17.0.0",
     "expo-constants": "~18.0.0",
     "expo-font": "~14.0.0",
@@ -49,6 +50,7 @@
     "@expo/cli": "54.0.27",
     "@types/react": "~19.1.10",
     "babel-preset-expo": "~14.0.0",
+    "babel-preset-typescript": "7.0.0-alpha.19",
     "eslint": "^9.12.0",
     "eslint-config-expo": "~10.0.0",
     "typescript": "~5.9.0"
