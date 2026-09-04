@@ -8,7 +8,7 @@ module.exports = function (api) {
       "expo-router/babel",
     ],
     parserOpts: {
-      // Babel 7.x: ?? ve || karışımına otomatik parantez ekle
+      // Babel 7.x: ?? ve || karışımına otomatik parentezs
       createParenthesizedExpressions: true,
     },
   };

@@ -3,7 +3,8 @@
 import { router } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { Image, ScrollView, Text, TouchableOpacity, View } from "expo-react-native";
+import { Image } from "expo-image";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 import { storage } from "../../lib/clients";
 
