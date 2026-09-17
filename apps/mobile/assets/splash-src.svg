@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1284" height="2778" viewBox="0 0 1284 2778">
+  <rect width="1284" height="2778" fill="#0A0A0A"/>
+  <defs>
+    <linearGradient id="flame" x1="260" y1="180" x2="760" y2="820" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFB14A"/>
+      <stop offset="0.4" stop-color="#FF6A00"/>
+      <stop offset="1" stop-color="#E04F00"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(642 1200) scale(0.85) translate(-512 -512)">
+    <path fill="url(#flame)" d="
+      M 512 170
+      C 360 170 250 270 250 400
+      C 250 500 320 560 430 600
+      C 510 630 560 660 560 720
+      C 560 790 500 840 410 840
+      C 330 840 270 790 250 720
+      L 340 700
+      C 355 745 380 770 410 770
+      C 455 770 490 740 490 720
+      C 490 680 450 655 370 625
+      C 270 585 180 520 180 400
+      C 180 240 320 100 512 100
+      C 700 100 840 230 840 390
+      C 840 490 780 550 670 590
+      C 590 620 540 650 540 710
+      C 540 780 600 830 690 830
+      C 770 830 830 780 850 720
+      L 760 700
+      C 745 745 720 770 690 770
+      C 645 770 610 740 610 710
+      C 610 670 650 645 730 615
+      C 830 575 920 510 920 390
+      C 920 210 760 170 512 170
+      Z
+    "/>
+    <path fill="#2A2A2A" transform="rotate(-28 512 512)" d="M 250 470 L 774 470 L 774 554 L 250 554 Z"/>
+    <g transform="rotate(-28 512 512)" stroke="#FFFFFF" stroke-width="14" stroke-linecap="round">
+      <line x1="300" y1="512" x2="360" y2="512"/>
+      <line x1="400" y1="512" x2="460" y2="512"/>
+      <line x1="500" y1="512" x2="560" y2="512"/>
+      <line x1="600" y1="512" x2="660" y2="512"/>
+      <line x1="700" y1="512" x2="740" y2="512"/>
+    </g>
+  </g>
+</svg>

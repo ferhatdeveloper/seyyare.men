@@ -1,12 +1,32 @@
-import { router } from "expo-router";
-import { LogIn, Globe, Heart, Bookmark, Bell, Info, Cpu } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { StatusBar, setStatusBarStyle } from "expo-status-bar";
+import {
+  Bell,
+  Bookmark,
+  ChevronRight,
+  Cpu,
+  Globe,
+  Heart,
+  Info,
+} from "lucide-react-native";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-import { auth, type StoredUser } from "../../lib/auth";
+import { Badge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
+import { Chip } from "../../components/ui/Chip";
+import { Screen, ScreenHeader } from "../../components/ui/Screen";
+import { SectionHeader } from "../../components/ui/SectionHeader";
+import { auth, type StoredUser, type UserGender } from "../../lib/auth";
 import { localeNativeName, supportedLocales, type LocaleCode } from "../../lib/locales";
+import { colors, fonts, radius, shadow, space } from "../../lib/theme";
 
 export default function ProfileScreen() {
   const { t, i18n } = useTranslation();
@@ -19,108 +39,363 @@ export default function ProfileScreen() {
     void auth.getUser().then(setUser);
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle("light");
+    }, []),
+  );
+
   const changeLocale = (locale: LocaleCode) => {
     void i18n.changeLanguage(locale);
     setCurrentLocale(locale);
   };
 
+  const initial = (user?.email ?? user?.phone ?? "U").charAt(0).toUpperCase();
+
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
-      <ScrollView className="flex-1" contentContainerClassName="pb-8">
-        <View className="px-5 py-4 border-b border-slate-200">
-          <Text className="text-2xl font-bold text-slate-900">{t("profile.title")}</Text>
+    <Screen edges={["top"]}>
+      <StatusBar style="light" />
+      <ScreenHeader title={t("profile.title")} subtitle="Seyyare hesabın" large />
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.accountBlock}>
+          {user ? (
+            <View style={styles.userCard}>
+              <View style={styles.avatarRing}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{initial}</Text>
+                </View>
+              </View>
+              <View style={styles.userMeta}>
+                <Text style={styles.userName} numberOfLines={1}>
+                  {user.email ?? user.phone}
+                </Text>
+                <Badge
+                  label={user.role === "dealer" ? "Dealer" : "User"}
+                  tone={user.role === "dealer" ? "viridian" : "mist"}
+                  style={styles.roleBadge}
+                />
+              </View>
+            </View>
+          ) : (
+            <View style={styles.guestCard}>
+              <Text style={styles.guestTitle}>Giriş yap, favorilerini kaydet</Text>
+              <Text style={styles.guestSub}>
+                İlanlarını takip et, aramalarını sakla.
+              </Text>
+              <View style={styles.guestActions}>
+                <Button
+                  label={t("auth.login")}
+                  variant="primary"
+                  style={styles.guestBtn}
+                  onPress={() => router.push("/auth/login")}
+                />
+                <Button
+                  label={t("auth.register")}
+                  variant="soft"
+                  style={styles.guestBtn}
+                  onPress={() => router.push("/auth/register")}
+                />
+              </View>
+            </View>
+          )}
         </View>
 
         {user ? (
-          <View className="px-5 py-6 border-b border-slate-200">
-            <View className="w-16 h-16 rounded-full bg-primary-100 items-center justify-center mb-3">
-              <Text className="text-2xl font-bold text-primary-700">
-                {(user.displayName ?? user.email ?? user.phone ?? "U").charAt(0).toUpperCase()}
-              </Text>
+          <View style={styles.genderSection}>
+            <Text style={styles.genderTitle}>{t("gender.label")}</Text>
+            <Text style={styles.genderHint}>{t("gender.hint")}</Text>
+            <View style={styles.genderChips}>
+              {(
+                [
+                  ["female", t("gender.female")],
+                  ["male", t("gender.male")],
+                  ["unspecified", t("gender.unspecified")],
+                ] as Array<[UserGender, string]>
+              ).map(([value, label]) => (
+                <Chip
+                  key={value}
+                  label={label}
+                  selected={user.gender === value}
+                  onPress={async () => {
+                    const next = await auth.updateUser({ gender: value });
+                    if (next) setUser(next);
+                  }}
+                  style={
+                    user.gender === value
+                      ? styles.localeChipActive
+                      : styles.localeChip
+                  }
+                />
+              ))}
             </View>
-            <Text className="text-lg font-bold text-slate-900">
-              {user.email ?? user.phone}
-            </Text>
-            <Text className="text-sm text-slate-500 mt-1">
-              {user.role === "dealer" ? "Dealer" : "User"}
-            </Text>
           </View>
-        ) : (
-          <TouchableOpacity
-            className="mx-5 mt-5 bg-primary-600 rounded-2xl py-4 flex-row items-center justify-center"
-            style={{ backgroundColor: "#0284C7" }}
-            onPress={() => router.push("/auth/login")}
-          >
-            <LogIn size={20} color="#FFFFFF" />
-            <Text className="text-white font-bold text-base ml-2">
-              {t("auth.login")}
-            </Text>
-          </TouchableOpacity>
-        )}
+        ) : null}
 
-        {/* Menu Items */}
-        <View className="mt-6">
-          <MenuItem icon={<Heart size={20} color="#64748B" />} label={t("profile.favorites")} onPress={() => router.push("/favorites")} />
-          <MenuItem icon={<Bookmark size={20} color="#64748B" />} label={t("profile.savedSearches")} />
-          <MenuItem icon={<Bell size={20} color="#64748B" />} label={t("profile.notifications")} />
-          <MenuItem icon={<Cpu size={20} color="#0EA5E9" />} label="Agent Inspector" onPress={() => router.push("/agents")} />
-          <MenuItem icon={<Info size={20} color="#64748B" />} label={t("profile.about")} />
+        <SectionHeader title="Hızlı erişim" />
+        <View style={styles.menu}>
+          <MenuItem
+            icon={<Heart size={20} color={colors.flame} strokeWidth={2} />}
+            label={t("profile.favorites")}
+            onPress={() => router.push("/favorites")}
+          />
+          <MenuItem
+            icon={<Bookmark size={20} color={colors.inkMuted} strokeWidth={2} />}
+            label={t("profile.savedSearches")}
+            onPress={() => router.push("/saved-searches")}
+          />
+          <MenuItem
+            icon={<Bell size={20} color={colors.inkMuted} strokeWidth={2} />}
+            label={t("profile.notifications")}
+            onPress={() => router.push("/notifications")}
+          />
+          <MenuItem
+            icon={<Cpu size={20} color={colors.viridian} strokeWidth={2} />}
+            label="Agent Inspector"
+            accent
+            onPress={() => router.push("/agents")}
+          />
+          <MenuItem
+            icon={<Info size={20} color={colors.inkMuted} strokeWidth={2} />}
+            label={t("profile.about")}
+            last
+            onPress={() => router.push("/about")}
+          />
         </View>
 
-        {/* Language selector */}
-        <View className="mt-6 px-5">
-          <View className="flex-row items-center mb-3">
-            <Globe size={18} color="#64748B" />
-            <Text className="ml-2 text-base font-semibold text-slate-700">
-              {t("profile.language")}
-            </Text>
+        <View style={styles.localeSection}>
+          <View style={styles.localeHeader}>
+            <Globe size={18} color={colors.flame} strokeWidth={2} />
+            <Text style={styles.localeTitle}>{t("profile.language")}</Text>
           </View>
-          <View className="bg-slate-50 rounded-2xl overflow-hidden">
+          <View style={styles.localeChips}>
             {supportedLocales.map((loc) => (
-              <TouchableOpacity
+              <Chip
                 key={loc}
-                className={`px-4 py-3 flex-row items-center justify-between border-b border-slate-100 ${
-                  currentLocale === loc ? "bg-primary-50" : ""
-                }`}
+                label={localeNativeName[loc]}
+                selected={currentLocale === loc}
                 onPress={() => changeLocale(loc)}
-              >
-                <Text
-                  className={`text-sm ${
-                    currentLocale === loc ? "text-primary-700 font-semibold" : "text-slate-700"
-                  }`}
-                >
-                  {localeNativeName[loc]}
-                </Text>
-                {currentLocale === loc && (
-                  <View className="w-2 h-2 rounded-full bg-primary-600" />
-                )}
-              </TouchableOpacity>
+                style={
+                  currentLocale === loc
+                    ? styles.localeChipActive
+                    : styles.localeChip
+                }
+              />
             ))}
           </View>
         </View>
 
-        {user && (
-          <TouchableOpacity
-            className="mx-5 mt-8 bg-red-50 border border-red-200 rounded-2xl py-3 items-center"
+        {user ? (
+          <Button
+            label={t("auth.logout")}
+            variant="danger"
+            style={styles.logoutBtn}
             onPress={async () => {
               await auth.clear();
               setUser(null);
             }}
-          >
-            <Text className="text-red-600 font-semibold">{t("auth.logout")}</Text>
-          </TouchableOpacity>
-        )}
+          />
+        ) : null}
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
-function MenuItem({ icon, label, onPress }: { icon: React.ReactNode; label: string; onPress?: () => void }) {
+function MenuItem({
+  icon,
+  label,
+  onPress,
+  accent,
+  last,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onPress?: () => void;
+  accent?: boolean;
+  last?: boolean;
+}) {
   return (
-    <TouchableOpacity className="px-5 py-4 flex-row items-center border-b border-slate-100" onPress={onPress}>
-      {icon}
-      <Text className="ml-3 text-base text-slate-700 flex-1">{label}</Text>
-      <Text className="text-slate-300">›</Text>
+    <TouchableOpacity
+      style={[styles.menuItem, last && styles.menuItemLast]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View style={[styles.menuIcon, accent && styles.menuIconAccent]}>{icon}</View>
+      <Text style={[styles.menuLabel, accent && styles.menuLabelAccent]}>{label}</Text>
+      <ChevronRight size={18} color={colors.inkFaint} strokeWidth={2} />
     </TouchableOpacity>
   );
 }
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  scrollContent: { paddingBottom: space.section + 8 },
+
+  accountBlock: {
+    paddingHorizontal: space.xl,
+    marginBottom: space.xl,
+  },
+
+  userCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: space.lg,
+    ...shadow.soft,
+  },
+  avatarRing: {
+    padding: 3,
+    borderRadius: radius.pill,
+    borderWidth: 2,
+    borderColor: colors.flame,
+    marginRight: space.md,
+  },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.pill,
+    backgroundColor: colors.flameSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarText: {
+    fontFamily: fonts.display,
+    fontSize: 22,
+    color: colors.flameDeep,
+  },
+  userMeta: { flex: 1, minWidth: 0 },
+  userName: {
+    fontFamily: fonts.displayMed,
+    fontSize: 16,
+    color: colors.ink,
+    marginBottom: 6,
+  },
+  roleBadge: { alignSelf: "flex-start" },
+
+  guestCard: {
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: space.lg,
+    ...shadow.soft,
+  },
+  guestTitle: {
+    fontFamily: fonts.displayMed,
+    fontSize: 16,
+    color: colors.ink,
+  },
+  guestSub: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.inkFaint,
+    marginTop: 4,
+    marginBottom: space.md,
+  },
+  guestActions: {
+    flexDirection: "row",
+    gap: space.sm,
+  },
+  guestBtn: { flex: 1 },
+
+  genderSection: {
+    marginHorizontal: space.xl,
+    marginBottom: space.lg,
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    padding: space.lg,
+    borderWidth: 1,
+    borderColor: colors.line,
+    ...shadow.soft,
+  },
+  genderTitle: {
+    fontFamily: fonts.displayMed,
+    fontSize: 15,
+    color: colors.ink,
+    marginBottom: 4,
+  },
+  genderHint: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.inkMuted,
+    marginBottom: space.md,
+    lineHeight: 16,
+  },
+  genderChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+
+  menu: {
+    marginHorizontal: space.xl,
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.line,
+    overflow: "hidden",
+    ...shadow.soft,
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: space.lg,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.mist,
+  },
+  menuItemLast: { borderBottomWidth: 0 },
+  menuIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    backgroundColor: colors.mist,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  menuIconAccent: { backgroundColor: colors.flameSoft },
+  menuLabel: {
+    flex: 1,
+    marginLeft: space.md,
+    fontFamily: fonts.bodyMed,
+    fontSize: 15,
+    color: colors.ink,
+  },
+  menuLabelAccent: {
+    fontFamily: fonts.bodySemi,
+    color: colors.viridianDeep,
+  },
+
+  localeSection: {
+    marginTop: space.xxl,
+    paddingHorizontal: space.xl,
+  },
+  localeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: space.md,
+  },
+  localeTitle: {
+    marginLeft: space.sm,
+    fontFamily: fonts.displayMed,
+    fontSize: 16,
+    color: colors.ink,
+  },
+  localeChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: space.sm,
+  },
+  localeChip: {},
+  localeChipActive: {
+    backgroundColor: colors.flame,
+    borderColor: colors.flame,
+  },
+
+  logoutBtn: {
+    marginHorizontal: space.xl,
+    marginTop: space.section,
+  },
+});

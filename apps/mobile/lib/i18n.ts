@@ -15,7 +15,7 @@ void i18n.use(initReactI18next).init({
   fallbackLng: defaultLocale,
   defaultNS: "common",
   ns: ["common"],
-  compatibilityJSON: "v4",
+  compatibilityJSON: "v3",
   interpolation: { escapeValue: false },
   react: { useSuspense: false },
   returnNull: false,

@@ -1,13 +1,42 @@
+import { StatusBar } from "expo-status-bar";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { Search, Sparkles, Car as CarIcon, ChevronRight } from "lucide-react-native";
+import {
+  Car,
+  CircleDot,
+  Fuel,
+  Mic,
+  Search,
+  Sparkles,
+  Zap,
+} from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useMemo } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
+import { AppHeader } from "../../components/brand";
+import { BrandStrip } from "../../components/BrandStrip";
+import { PromoCarousel } from "../../components/PromoCarousel";
 import { VehicleCard, type VehicleListItem } from "../../components/VehicleCard";
+import { SectionHeader } from "../../components/ui";
 import { api } from "../../lib/api";
-import { localeNativeName } from "../../lib/locales";
+import { withBrandLogos } from "../../lib/brand-logos";
+import { colors, fonts, radius, shadow, space } from "../../lib/theme";
+
+const BODY_TYPES = [
+  { key: "SUV", label: "SUV", Icon: Car },
+  { key: "Sedan", label: "Sedan", Icon: CircleDot },
+  { key: "Hatchback", label: "Hatch", Icon: Car },
+  { key: "Hibrit", label: "Hibrit", Icon: Fuel },
+  { key: "Elektrik", label: "EV", Icon: Zap },
+];
 
 export default function HomeScreen() {
   const { t, i18n } = useTranslation();
@@ -15,7 +44,7 @@ export default function HomeScreen() {
   const { data: recent, isLoading } = useQuery({
     queryKey: ["vehicles-recent", i18n.language],
     queryFn: () =>
-      api.rpc("search_vehicles", {
+      api.rpc<VehicleListItem[]>("search_vehicles", {
         p_locale: i18n.language,
         p_sort_by: "created_at",
         p_sort_dir: "desc",
@@ -26,104 +55,366 @@ export default function HomeScreen() {
 
   const { data: refs } = useQuery({
     queryKey: ["reference", i18n.language],
-    queryFn: () => api.rpc("list_reference_data", { p_locale: i18n.language }),
+    queryFn: () =>
+      api.rpc<{ brands: Array<{ id: number; name: string }> }>("list_reference_data", {
+        p_locale: i18n.language,
+      }),
     staleTime: 60 * 60 * 1000,
   });
 
+  const { data: inventory } = useQuery({
+    queryKey: ["inventory-count", i18n.language],
+    queryFn: () =>
+      api.rpc<VehicleListItem[]>("search_vehicles", {
+        p_locale: i18n.language,
+        p_sort_by: "created_at",
+        p_sort_dir: "desc",
+        p_page_size: 100,
+        p_page_offset: 0,
+      }),
+    staleTime: 60_000,
+  });
+
+  const brands = withBrandLogos(refs?.brands ?? []);
+  const vehicles = recent ?? [];
+  const inventoryCount = inventory?.length ?? vehicles.length;
+  const featured = vehicles.filter((v) => v.featured).slice(0, 5);
+  const featuredList = featured.length > 0 ? featured : vehicles.slice(0, 4);
+
+  const popularModels = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const v of inventory ?? vehicles) {
+      const key = [v.make_name, v.model].filter(Boolean).join(" ").trim();
+      if (!key) continue;
+      map.set(key, (map.get(key) ?? 0) + 1);
+    }
+    return Array.from(map.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+  }, [inventory, vehicles]);
+
+
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
-      <ScrollView className="flex-1" contentContainerClassName="pb-8">
-        {/* Header */}
-        <View className="px-5 pt-4 pb-3">
-          <Text className="text-3xl font-bold text-slate-900">{t("home.greeting")}</Text>
-          <Text className="text-sm text-slate-500 mt-1">{t("app.tagline")}</Text>
-        </View>
+    <View style={styles.root}>
+      <StatusBar style="light" />
+      <AppHeader />
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.sheet}>
+          <PromoCarousel items={featuredList} />
 
-        {/* Search Bar */}
-        <TouchableOpacity
-          className="mx-5 mb-6 flex-row items-center bg-slate-100 rounded-2xl px-4 py-3"
-          onPress={() => router.push("/(tabs)/search")}
-        >
-          <Search size={20} color="#64748B" />
-          <Text className="ml-3 text-slate-500 flex-1">{t("home.searchPlaceholder")}</Text>
-        </TouchableOpacity>
-
-        {/* AI Assistant */}
-        <TouchableOpacity
-          className="mx-5 mb-6 rounded-2xl p-5 flex-row items-center"
-          style={{ backgroundColor: "#0EA5E9" }}
-          onPress={() => router.push("/ai-assistant")}
-        >
-          <View className="bg-white/20 rounded-full p-3 mr-4">
-            <Sparkles size={24} color="#FFFFFF" />
-          </View>
-          <View className="flex-1">
-            <Text className="text-white font-bold text-base">{t("home.aiAssistant")}</Text>
-            <Text className="text-white/80 text-sm mt-0.5">
-              {t("home.aiAssistantPrompt")}
-            </Text>
-          </View>
-          <ChevronRight size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-
-        {/* Brands */}
-        <View className="px-5 mb-6">
-          <Text className="text-lg font-bold text-slate-900 mb-3">
-            {t("home.popularBrands")}
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {(refs?.brands ?? []).slice(0, 12).map((b) => (
+          <View style={styles.searchCta}>
+            <Text style={styles.searchCtaTitle}>Find your perfect car</Text>
+            <TouchableOpacity
+              style={styles.searchBar}
+              onPress={() => router.push("/(tabs)/search")}
+              activeOpacity={0.9}
+            >
+              <Search size={18} color={colors.inkFaint} strokeWidth={2} />
+              <Text style={styles.searchPlaceholder}>{t("home.searchPlaceholder")}</Text>
               <TouchableOpacity
-                key={b.id}
-                className="mr-3 bg-slate-50 rounded-2xl px-5 py-4 items-center min-w-[90px]"
-                onPress={() => router.push({ pathname: "/(tabs)/search", params: { q: b.name } })}
+                style={styles.micBtn}
+                onPress={() => router.push("/voice")}
+                hitSlop={6}
               >
-                <CarIcon size={28} color="#0EA5E9" />
-                <Text className="mt-2 text-sm font-semibold text-slate-700" numberOfLines={1}>
-                  {b.name}
-                </Text>
+                <Mic size={16} color={colors.flame} strokeWidth={2.2} />
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Recent listings */}
-        <View className="px-5">
-          <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-lg font-bold text-slate-900">
-              {t("home.recentListings")}
-            </Text>
-            <TouchableOpacity onPress={() => router.push("/(tabs)/search")}>
-              <Text className="text-primary-600 font-semibold text-sm">
-                {t("home.seeAll")}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.searchSubmit}
+              onPress={() => router.push("/(tabs)/search")}
+              activeOpacity={0.9}
+            >
+              <Text style={styles.searchSubmitText}>
+                Search {inventoryCount.toLocaleString("tr-TR")} cars
               </Text>
             </TouchableOpacity>
           </View>
 
-          {isLoading ? (
-            <View className="py-12 items-center">
-              <ActivityIndicator color="#0EA5E9" />
-              <Text className="text-slate-400 text-sm mt-2">{t("common.loading")}</Text>
+          <TouchableOpacity
+            style={styles.aiRow}
+            onPress={() => router.push("/ai-assistant")}
+            activeOpacity={0.9}
+          >
+            <View style={styles.aiIcon}>
+              <Sparkles size={16} color={colors.flame} strokeWidth={2.2} />
             </View>
-          ) : recent && recent.length > 0 ? (
-            recent.map((vehicle) => <VehicleCard key={vehicle.id} vehicle={vehicle} />)
-          ) : (
-            <View className="items-center py-12">
-              <Text className="text-slate-400 text-sm">Henüz ilan yok</Text>
-              <Text className="text-slate-300 text-xs mt-2 text-center px-8">
-                Veritabanı boş. İlk ilanı siz verebilirsiniz.
-              </Text>
-              <TouchableOpacity
-                className="mt-4 bg-primary-600 rounded-xl px-5 py-2.5"
-                style={{ backgroundColor: "#0284C7" }}
-                onPress={() => router.push("/(tabs)/sell")}
+            <View style={styles.flex}>
+              <Text style={styles.aiTitle}>{t("home.aiAssistant")}</Text>
+              <Text style={styles.aiSub}>{t("home.aiAssistantPrompt")}</Text>
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.section}>
+            <SectionHeader title="Kategoriler" padded={false} />
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.catRow}
+            >
+              {BODY_TYPES.map((b) => {
+                const Icon = b.Icon;
+                return (
+                  <TouchableOpacity
+                    key={b.key}
+                    style={styles.catTile}
+                    onPress={() =>
+                      router.push({ pathname: "/(tabs)/search", params: { q: b.key } })
+                    }
+                    activeOpacity={0.88}
+                  >
+                    <View style={styles.catIcon}>
+                      <Icon size={18} color={colors.flame} strokeWidth={2} />
+                    </View>
+                    <Text style={styles.catLabel}>{b.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          {popularModels.length > 0 ? (
+            <View style={styles.sectionTight}>
+              <SectionHeader title="Popüler modeller" />
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.popularRow}
               >
-                <Text className="text-white font-semibold text-sm">İlan Ver</Text>
-              </TouchableOpacity>
+                {popularModels.map((m) => (
+                  <TouchableOpacity
+                    key={m.name}
+                    style={styles.popularChip}
+                    onPress={() =>
+                      router.push({ pathname: "/(tabs)/search", params: { q: m.name } })
+                    }
+                    activeOpacity={0.88}
+                  >
+                    <Text style={styles.popularChipText}>
+                      {m.name} ({m.count})
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             </View>
-          )}
+          ) : null}
+
+          <View style={styles.sectionTight}>
+            <SectionHeader
+              title={t("home.popularBrands")}
+              actionLabel={t("home.seeAll")}
+              onAction={() => router.push("/(tabs)/search")}
+            />
+            <BrandStrip
+              brands={brands}
+              onSelect={(b) =>
+                router.push({ pathname: "/(tabs)/search", params: { make: b.name, makeId: String(b.id) } })
+              }
+              limit={20}
+            />
+          </View>
+
+          <View style={styles.section}>
+            <SectionHeader
+              title={t("home.recentListings")}
+              actionLabel={t("home.seeAll")}
+              onAction={() => router.push("/(tabs)/search")}
+              padded={false}
+            />
+
+            {isLoading ? (
+              <View style={styles.loading}>
+                <ActivityIndicator color={colors.flame} />
+                <Text style={styles.loadingText}>{t("common.loading")}</Text>
+              </View>
+            ) : vehicles.length > 0 ? (
+              vehicles.map((vehicle, index) => (
+                <VehicleCard key={vehicle.id} vehicle={vehicle} index={index} />
+              ))
+            ) : (
+              <View style={styles.empty}>
+                <Text style={styles.emptyTitle}>Henüz ilan yok</Text>
+                <TouchableOpacity
+                  style={styles.emptyBtn}
+                  onPress={() => router.push("/(tabs)/sell")}
+                  activeOpacity={0.9}
+                >
+                  <Text style={styles.emptyBtnText}>İlan Ver</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.paper },
+  flex: { flex: 1 },
+  content: { paddingBottom: 48 },
+  sheet: {
+    backgroundColor: colors.paper,
+    paddingTop: space.md,
+  },
+  searchCta: {
+    marginHorizontal: space.xl,
+    marginBottom: space.xl,
+    backgroundColor: colors.ink,
+    borderRadius: radius.lg,
+    padding: space.md,
+    gap: space.sm,
+  },
+  searchCtaTitle: {
+    fontFamily: fonts.displayMed,
+    fontSize: 15,
+    color: colors.white,
+    marginBottom: 2,
+  },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.white,
+    borderRadius: radius.md,
+    paddingHorizontal: space.md,
+    paddingVertical: 12,
+  },
+  searchPlaceholder: {
+    flex: 1,
+    marginLeft: 8,
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.inkFaint,
+  },
+  micBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.flameSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  searchSubmit: {
+    backgroundColor: colors.flame,
+    borderRadius: radius.md,
+    paddingVertical: 13,
+    alignItems: "center",
+  },
+  searchSubmitText: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.white,
+  },
+  aiRow: {
+    marginHorizontal: space.xl,
+    marginBottom: space.xxl,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    backgroundColor: colors.white,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    padding: space.md,
+    ...shadow.soft,
+  },
+  aiIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.flameSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  aiTitle: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.ink,
+  },
+  aiSub: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.inkFaint,
+    marginTop: 2,
+  },
+  section: { paddingHorizontal: space.xl, marginBottom: space.xxl },
+  sectionTight: { marginBottom: space.xxl },
+  catRow: { gap: 10, paddingRight: space.xl },
+  catTile: {
+    width: 76,
+    alignItems: "center",
+    backgroundColor: colors.white,
+    borderRadius: radius.md,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: colors.line,
+    ...shadow.soft,
+  },
+  catIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.flameSoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  catLabel: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 12,
+    color: colors.ink,
+  },
+  popularRow: {
+    paddingHorizontal: space.xl,
+    gap: 8,
+  },
+  popularChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: radius.pill,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  popularChipText: {
+    fontFamily: fonts.bodyMed,
+    fontSize: 13,
+    color: colors.ink,
+  },
+  loading: {
+    alignItems: "center",
+    paddingVertical: space.xxl,
+    gap: space.sm,
+  },
+  loadingText: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.inkFaint,
+  },
+  empty: {
+    alignItems: "center",
+    paddingVertical: space.xxl,
+    gap: space.md,
+  },
+  emptyTitle: {
+    fontFamily: fonts.displayMed,
+    fontSize: 16,
+    color: colors.ink,
+  },
+  emptyBtn: {
+    backgroundColor: colors.flame,
+    paddingHorizontal: space.xl,
+    paddingVertical: 12,
+    borderRadius: radius.md,
+  },
+  emptyBtnText: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.white,
+  },
+});

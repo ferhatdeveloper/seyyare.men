@@ -4,12 +4,16 @@ const ACCESS_KEY = "seyyare.access_token";
 const REFRESH_KEY = "seyyare.refresh_token";
 const USER_KEY = "seyyare.user";
 
+export type UserGender = "female" | "male" | "unspecified";
+
 export interface StoredUser {
   id: string;
   email: string | null;
   phone: string | null;
   role: "user" | "dealer" | "admin";
   locale: string;
+  /** Required for family / female-driver rental option */
+  gender?: UserGender | null;
 }
 
 interface AuthTokens {
@@ -37,6 +41,14 @@ export const auth = {
   async getUser(): Promise<StoredUser | null> {
     const raw = await SecureStore.getItemAsync(USER_KEY);
     return raw ? (JSON.parse(raw) as StoredUser) : null;
+  },
+
+  async updateUser(patch: Partial<StoredUser>): Promise<StoredUser | null> {
+    const current = await this.getUser();
+    if (!current) return null;
+    const next = { ...current, ...patch };
+    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(next));
+    return next;
   },
 
   async clear(): Promise<void> {

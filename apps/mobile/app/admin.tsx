@@ -1,11 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { ChevronLeft, TrendingUp, DollarSign, Activity, Cpu } from "lucide-react-native";
+import { DollarSign, Activity, Cpu } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { Screen, ScreenHeader } from "../components/ui/Screen";
 import { orchestrator } from "../lib/clients";
+import { colors, fonts, radius, shadow, space } from "../lib/theme";
+
+const BORDER_FLAME = "#FFD8B8";
 
 interface AgentMetrics {
   agent: string;
@@ -29,7 +32,7 @@ interface OrchestratorStats {
 }
 
 export default function AdminDashboard() {
-  const { t } = useTranslation();
+  const { t: _t } = useTranslation();
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-stats"],
@@ -39,176 +42,130 @@ export default function AdminDashboard() {
   });
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50" edges={["top"]}>
-      <View className="flex-row items-center px-5 py-3 bg-white border-b border-slate-200">
-        <TouchableOpacity onPress={() => router.back()} className="mr-3">
-          <ChevronLeft size={22} color="#0F172A" />
-        </TouchableOpacity>
-        <Text className="text-lg font-bold text-slate-900">Admin Dashboard</Text>
-      </View>
+    <Screen edges={["top"]}>
+      <ScreenHeader title="Yönetim Paneli" onBack={() => router.back()} />
 
-      <ScrollView className="flex-1">
+      <ScrollView style={styles.flex} contentContainerStyle={styles.scroll}>
         {isLoading ? (
-          <View className="py-12 items-center">
-            <ActivityIndicator color="#0EA5E9" />
+          <View style={styles.loading}>
+            <ActivityIndicator color={colors.flame} />
           </View>
         ) : data ? (
           <>
-            {/* Top stats */}
-            <View className="px-5 py-4 flex-row gap-3">
+            <View style={styles.statRow}>
               <StatCard
-                icon={<Activity size={18} color="#0EA5E9" />}
+                icon={<Activity size={18} color={colors.flame} />}
                 label="Aktif Thread"
                 value={data.activeThreads}
-                bg="bg-blue-50"
-                border="border-blue-200"
+                tint={colors.flameSoft}
               />
               <StatCard
-                icon={<DollarSign size={18} color="#F59E0B" />}
+                icon={<DollarSign size={18} color={colors.flameDeep} />}
                 label="7 Gün Maliyet"
                 value={`$${data.totalCost7d.toFixed(2)}`}
-                bg="bg-amber-50"
-                border="border-amber-200"
+                tint={colors.brassSoft}
               />
               <StatCard
-                icon={<Cpu size={18} color="#10B981" />}
+                icon={<Cpu size={18} color={colors.inkMuted} />}
                 label="7 Gün Çağrı"
                 value={data.totalCalls7d.toLocaleString()}
-                bg="bg-green-50"
-                border="border-green-200"
+                tint={colors.mist}
               />
             </View>
 
-            {/* Agent metrics */}
-            <View className="px-5 pb-5">
-              <Text className="text-base font-bold text-slate-900 mb-3">
-                Agent Performansı (7 gün)
-              </Text>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Ajan Performansı (7 gün)</Text>
               {data.agents.length === 0 ? (
-                <View className="bg-white border border-slate-200 rounded-2xl p-6 items-center">
-                  <Text className="text-slate-400 text-sm">Henüz veri yok</Text>
+                <View style={styles.emptyCard}>
+                  <Text style={styles.muted}>Henüz veri yok</Text>
                 </View>
               ) : (
                 data.agents.map((a) => (
-                  <View
-                    key={a.agent}
-                    className="bg-white border border-slate-200 rounded-2xl p-4 mb-2"
-                  >
-                    <View className="flex-row items-center justify-between mb-2">
+                  <View key={a.agent} style={styles.agentCard}>
+                    <View style={styles.agentHeader}>
                       <View>
-                        <Text className="text-base font-bold text-slate-900 capitalize">
-                          {a.agent}
-                        </Text>
-                        <Text className="text-xs text-slate-500">
+                        <Text style={styles.agentName}>{a.agent}</Text>
+                        <Text style={styles.agentMeta}>
                           {a.totalCalls} çağrı · {a.successRate ? Math.round(a.successRate * 100) : 0}% başarı
                         </Text>
                       </View>
-                      <Text className="text-sm font-bold text-amber-600">
-                        ${a.totalCost.toFixed(3)}
-                      </Text>
+                      <Text style={styles.agentCost}>${a.totalCost.toFixed(3)}</Text>
                     </View>
-                    <View className="flex-row justify-between">
+                    <View style={styles.metricsRow}>
                       <Metric label="Ort. maliyet" value={`$${a.avgCost.toFixed(4)}`} />
                       <Metric label="Ort. süre" value={`${Math.round(a.avgDuration)}ms`} />
-                      {a.avgConfidence > 0 && (
-                        <Metric
-                          label="Ort. güven"
-                          value={`${Math.round(a.avgConfidence * 100)}%`}
-                        />
-                      )}
+                      {a.avgConfidence > 0 ? (
+                        <Metric label="Ort. güven" value={`${Math.round(a.avgConfidence * 100)}%`} />
+                      ) : null}
                     </View>
                   </View>
                 ))
               )}
             </View>
 
-            {/* Daily cost */}
-            {data.dailyCosts.length > 0 && (
-              <View className="px-5 pb-5">
-                <Text className="text-base font-bold text-slate-900 mb-3">
-                  Günlük Maliyet
-                </Text>
-                <View className="bg-white border border-slate-200 rounded-2xl p-4">
-                  <View className="flex-row items-end h-32 gap-1">
+            {data.dailyCosts.length > 0 ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Günlük Maliyet</Text>
+                <View style={styles.chartCard}>
+                  <View style={styles.chart}>
                     {data.dailyCosts.map((d, i) => {
                       const maxCost = Math.max(...data.dailyCosts.map((x) => x.costUsd), 0.01);
                       const height = Math.max(8, (d.costUsd / maxCost) * 100);
                       return (
-                        <View key={i} className="flex-1 items-center">
-                          <View
-                            className="w-full bg-amber-500 rounded-t"
-                            style={{ height: `${height}%` }}
-                          />
-                          <Text className="text-[10px] text-slate-500 mt-1">
-                            {d.day.slice(5)}
-                          </Text>
+                        <View key={i} style={styles.barCol}>
+                          <View style={[styles.bar, { height: `${height}%` as `${number}%` }]} />
+                          <Text style={styles.barLabel}>{d.day.slice(5)}</Text>
                         </View>
                       );
                     })}
                   </View>
                 </View>
               </View>
-            )}
+            ) : null}
 
-            {/* Cost by intent */}
-            {data.costByIntent.length > 0 && (
-              <View className="px-5 pb-5">
-                <Text className="text-base font-bold text-slate-900 mb-3">
-                  Intent Bazlı Maliyet
-                </Text>
-                <View className="bg-white border border-slate-200 rounded-2xl p-4">
+            {data.costByIntent.length > 0 ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Intent Bazlı Maliyet</Text>
+                <View style={styles.listCard}>
                   {data.costByIntent.slice(0, 10).map((i) => (
-                    <View
-                      key={i.intent}
-                      className="flex-row items-center justify-between py-1.5 border-b border-slate-100 last:border-0"
-                    >
-                      <Text className="text-sm text-slate-700">{i.intent}</Text>
-                      <View className="flex-row items-center gap-2">
-                        <Text className="text-xs text-slate-500">{i.calls}×</Text>
-                        <Text className="text-sm font-semibold text-amber-700">
-                          ${i.cost.toFixed(3)}
-                        </Text>
+                    <View key={i.intent} style={styles.listRow}>
+                      <Text style={styles.listLabel}>{i.intent}</Text>
+                      <View style={styles.listRight}>
+                        <Text style={styles.listMuted}>{i.calls}×</Text>
+                        <Text style={styles.listValue}>${i.cost.toFixed(3)}</Text>
                       </View>
                     </View>
                   ))}
                 </View>
               </View>
-            )}
+            ) : null}
 
-            {/* Cost by model */}
-            {data.costByModel.length > 0 && (
-              <View className="px-5 pb-8">
-                <Text className="text-base font-bold text-slate-900 mb-3">
-                  Model Bazlı Maliyet
-                </Text>
-                <View className="bg-white border border-slate-200 rounded-2xl p-4">
+            {data.costByModel.length > 0 ? (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Model Bazlı Maliyet</Text>
+                <View style={styles.listCard}>
                   {data.costByModel.slice(0, 10).map((m) => (
-                    <View
-                      key={m.model}
-                      className="flex-row items-center justify-between py-1.5 border-b border-slate-100 last:border-0"
-                    >
-                      <Text className="text-xs text-slate-700 font-mono" numberOfLines={1}>
+                    <View key={m.model} style={styles.listRow}>
+                      <Text style={styles.mono} numberOfLines={1}>
                         {m.model}
                       </Text>
-                      <View className="flex-row items-center gap-2">
-                        <Text className="text-xs text-slate-500">{m.calls}×</Text>
-                        <Text className="text-sm font-semibold text-amber-700">
-                          ${m.cost.toFixed(3)}
-                        </Text>
+                      <View style={styles.listRight}>
+                        <Text style={styles.listMuted}>{m.calls}×</Text>
+                        <Text style={styles.listValue}>${m.cost.toFixed(3)}</Text>
                       </View>
                     </View>
                   ))}
                 </View>
               </View>
-            )}
+            ) : null}
           </>
         ) : (
-          <View className="py-12 items-center">
-            <Text className="text-slate-400">Veri yüklenemedi</Text>
+          <View style={styles.loading}>
+            <Text style={styles.muted}>Veri yüklenemedi</Text>
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -216,20 +173,18 @@ function StatCard({
   icon,
   label,
   value,
-  bg,
-  border,
+  tint,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string | number;
-  bg: string;
-  border: string;
+  tint: string;
 }) {
   return (
-    <View className={`flex-1 ${bg} border ${border} rounded-2xl p-3`}>
-      <View className="mb-2">{icon}</View>
-      <Text className="text-base font-bold text-slate-900">{value}</Text>
-      <Text className="text-[10px] text-slate-600 mt-0.5">{label}</Text>
+    <View style={[styles.statCard, { backgroundColor: tint }]}>
+      <View style={styles.statIcon}>{icon}</View>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 }
@@ -237,8 +192,156 @@ function StatCard({
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <View>
-      <Text className="text-[10px] text-slate-500">{label}</Text>
-      <Text className="text-xs font-semibold text-slate-900">{value}</Text>
+      <Text style={styles.metricLabel}>{label}</Text>
+      <Text style={styles.metricValue}>{value}</Text>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  scroll: { paddingBottom: space.section },
+  loading: { paddingVertical: space.section * 2, alignItems: "center" },
+  muted: { fontFamily: fonts.body, fontSize: 13, color: colors.inkFaint },
+  statRow: {
+    flexDirection: "row",
+    gap: space.sm,
+    paddingHorizontal: space.xl,
+    paddingVertical: space.lg,
+  },
+  statCard: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: BORDER_FLAME,
+    borderRadius: radius.lg,
+    padding: space.md,
+    ...shadow.soft,
+  },
+  statIcon: { marginBottom: space.sm },
+  statValue: {
+    fontFamily: fonts.displayMed,
+    fontSize: 15,
+    color: colors.ink,
+  },
+  statLabel: {
+    fontFamily: fonts.body,
+    fontSize: 10,
+    color: colors.inkMuted,
+    marginTop: 2,
+  },
+  section: { paddingHorizontal: space.xl, paddingBottom: space.xl },
+  sectionTitle: {
+    fontFamily: fonts.displayMed,
+    fontSize: 16,
+    color: colors.ink,
+    letterSpacing: -0.3,
+    marginBottom: space.md,
+  },
+  emptyCard: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: BORDER_FLAME,
+    borderRadius: radius.lg,
+    padding: space.xxl,
+    alignItems: "center",
+  },
+  agentCard: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: BORDER_FLAME,
+    borderRadius: radius.lg,
+    padding: space.lg,
+    marginBottom: space.sm,
+    ...shadow.soft,
+  },
+  agentHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: space.sm,
+  },
+  agentName: {
+    fontFamily: fonts.displayMed,
+    fontSize: 15,
+    color: colors.ink,
+    textTransform: "capitalize",
+  },
+  agentMeta: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkFaint,
+  },
+  agentCost: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.flameDeep,
+  },
+  metricsRow: { flexDirection: "row", justifyContent: "space-between" },
+  metricLabel: {
+    fontFamily: fonts.body,
+    fontSize: 10,
+    color: colors.inkFaint,
+  },
+  metricValue: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 11,
+    color: colors.ink,
+  },
+  chartCard: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: BORDER_FLAME,
+    borderRadius: radius.lg,
+    padding: space.lg,
+    ...shadow.soft,
+  },
+  chart: { flexDirection: "row", alignItems: "flex-end", height: 128, gap: 4 },
+  barCol: { flex: 1, alignItems: "center" },
+  bar: {
+    width: "100%",
+    backgroundColor: colors.flame,
+    borderTopLeftRadius: 4,
+    borderTopRightRadius: 4,
+  },
+  barLabel: {
+    fontFamily: fonts.body,
+    fontSize: 10,
+    color: colors.inkFaint,
+    marginTop: 4,
+  },
+  listCard: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: BORDER_FLAME,
+    borderRadius: radius.lg,
+    padding: space.lg,
+    ...shadow.soft,
+  },
+  listRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.flameSoft,
+  },
+  listLabel: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.inkMuted,
+  },
+  mono: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkMuted,
+  },
+  listRight: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  listMuted: { fontFamily: fonts.body, fontSize: 11, color: colors.inkFaint },
+  listValue: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 13,
+    color: colors.flameDeep,
+  },
+});

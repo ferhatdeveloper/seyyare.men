@@ -1,22 +1,21 @@
-// Agent Inspector — kullanıcı Central Agent'in hangi worker'ları çalıştırdığını görsün
-// Plan execution timeline + worker durumları + message bus logu
-
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import {
-  ChevronLeft,
-  Cpu,
   CheckCircle2,
   XCircle,
   Clock,
   Zap,
   Activity,
+  Cpu,
 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { Screen, ScreenHeader } from "../components/ui/Screen";
 import { orchestrator } from "../lib/clients";
+import { colors, fonts, radius, shadow, space } from "../lib/theme";
+
+const BORDER_FLAME = "#FFD8B8";
 
 interface WorkerStatus {
   name: string;
@@ -40,17 +39,14 @@ interface CentralHealth {
   timestamp: number;
 }
 
-interface MessageBusEntry {
-  id: string;
-  type: string;
-  from: string;
-  to: string;
-  timestamp: number;
-  data: Record<string, unknown>;
-}
+const STATUS_TR: Record<WorkerStatus["status"], string> = {
+  active: "AKTİF",
+  paused: "DURAKLATILDI",
+  disabled: "KAPALI",
+};
 
 export default function AgentInspector() {
-  const { t } = useTranslation();
+  const { t: _t } = useTranslation();
 
   const healthQuery = useQuery({
     queryKey: ["central-health"],
@@ -69,78 +65,67 @@ export default function AgentInspector() {
   });
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50" edges={["top"]}>
-      <View className="flex-row items-center px-5 py-3 bg-white border-b border-slate-200">
-        <TouchableOpacity onPress={() => router.back()} className="mr-3">
-          <ChevronLeft size={22} color="#0F172A" />
-        </TouchableOpacity>
-        <Cpu size={20} color="#0EA5E9" />
-        <Text className="ml-2 text-lg font-bold text-slate-900">Agent Inspector</Text>
-      </View>
+    <Screen edges={["top"]}>
+      <ScreenHeader
+        title="Ajan Denetçisi"
+        onBack={() => router.back()}
+        right={<Cpu size={20} color={colors.flame} />}
+      />
 
-      <ScrollView className="flex-1">
-        {/* Central Agent Header */}
-        <View className="px-5 pt-4 pb-3">
-          <View className="bg-gradient-to-br from-primary-500 to-primary-700 rounded-2xl p-4" style={{ backgroundColor: "#0EA5E9" }}>
-            <View className="flex-row items-center">
-              <Zap size={24} color="#FFFFFF" />
-              <View className="ml-3 flex-1">
-                <Text className="text-white font-bold text-base">Central Agent</Text>
-                <Text className="text-white/85 text-xs mt-0.5">
-                  Tüm worker'ları yöneten merkez ajan
-                </Text>
-              </View>
+      <ScrollView style={styles.flex} contentContainerStyle={styles.scroll}>
+        <View style={styles.hero}>
+          <View style={styles.heroRow}>
+            <Zap size={24} color={colors.white} />
+            <View style={styles.heroText}>
+              <Text style={styles.heroTitle}>Merkez Ajan</Text>
+              <Text style={styles.heroSub}>Tüm worker'ları yöneten merkez ajan</Text>
             </View>
-            <View className="flex-row mt-3 pt-3 border-t border-white/20">
-              <HeaderStat
-                icon={<Activity size={14} color="#FFFFFF" />}
-                label="Aktif Worker"
-                value={`${healthQuery.data?.workers.active ?? 0}/${healthQuery.data?.workers.total ?? 0}`}
-              />
-              <HeaderStat
-                icon={<Cpu size={14} color="#FFFFFF" />}
-                label="Yetenek"
-                value={`${healthQuery.data?.capabilities.length ?? 0}`}
-              />
-            </View>
+          </View>
+          <View style={styles.heroStats}>
+            <HeaderStat
+              icon={<Activity size={14} color={colors.white} />}
+              label="Aktif Worker"
+              value={`${healthQuery.data?.workers.active ?? 0}/${healthQuery.data?.workers.total ?? 0}`}
+            />
+            <HeaderStat
+              icon={<Cpu size={14} color={colors.white} />}
+              label="Yetenek"
+              value={`${healthQuery.data?.capabilities.length ?? 0}`}
+            />
           </View>
         </View>
 
-        {/* Workers List */}
-        <View className="px-5 pb-5">
-          <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-base font-bold text-slate-900">Worker'lar</Text>
-            <Text className="text-xs text-slate-500">Son 24 saat</Text>
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Worker'lar</Text>
+            <Text style={styles.sectionMeta}>Son 24 saat</Text>
           </View>
 
           {workersQuery.isLoading ? (
-            <View className="py-8 items-center">
-              <ActivityIndicator color="#0EA5E9" />
+            <View style={styles.loading}>
+              <ActivityIndicator color={colors.flame} />
             </View>
           ) : (
-            (workersQuery.data?.workers ?? []).map((w) => (
-              <WorkerCard key={w.name} worker={w} />
-            ))
+            (workersQuery.data?.workers ?? []).map((w) => <WorkerCard key={w.name} worker={w} />)
           )}
         </View>
 
-        {/* Architecture Diagram */}
-        <View className="px-5 pb-8">
-          <Text className="text-base font-bold text-slate-900 mb-3">Mimari</Text>
-          <View className="bg-white border border-slate-200 rounded-2xl p-4">
-            <ArchRow icon="🎯" label="Central Agent" sub="intent → plan → dispatch → compose" color="bg-primary-100" />
-            <View className="h-3 ml-7 border-l-2 border-dashed border-slate-300" />
-            <ArchRow icon="📋" label="Task Planner" sub="DAG + dependency-aware" color="bg-blue-100" />
-            <View className="h-3 ml-7 border-l-2 border-dashed border-slate-300" />
-            <ArchRow icon="⚡" label="Worker Registry" sub="retry + fallback" color="bg-amber-100" />
-            <View className="h-3 ml-7 border-l-2 border-dashed border-slate-300" />
-            <ArchRow icon="🚌" label="Agent Message Bus" sub="JSON-RPC" color="bg-green-100" />
-            <View className="h-3 ml-7 border-l-2 border-dashed border-slate-300" />
-            <ArchRow icon="🧠" label="Central Memory" sub="Redis + DB" color="bg-purple-100" />
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Mimari</Text>
+          <View style={styles.archCard}>
+            <ArchRow label="Merkez Ajan" sub="intent → plan → dispatch → compose" />
+            <View style={styles.archLine} />
+            <ArchRow label="Görev Planlayıcı" sub="DAG + bağımlılık farkındalığı" />
+            <View style={styles.archLine} />
+            <ArchRow label="Worker Kaydı" sub="retry + fallback" />
+            <View style={styles.archLine} />
+            <ArchRow label="Ajan Mesaj Bus" sub="JSON-RPC" />
+            <View style={styles.archLine} />
+            <ArchRow label="Merkez Bellek" sub="Redis + DB" />
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -154,86 +139,250 @@ function HeaderStat({
   value: string;
 }) {
   return (
-    <View className="flex-1">
-      <View className="flex-row items-center">
+    <View style={styles.headerStat}>
+      <View style={styles.headerStatLabelRow}>
         {icon}
-        <Text className="ml-1.5 text-[10px] text-white/80">{label}</Text>
+        <Text style={styles.headerStatLabel}>{label}</Text>
       </View>
-      <Text className="text-white font-bold text-lg mt-0.5">{value}</Text>
+      <Text style={styles.headerStatValue}>{value}</Text>
     </View>
   );
 }
 
 function WorkerCard({ worker }: { worker: WorkerStatus }) {
-  const statusColor = {
-    active: { bg: "bg-green-50", border: "border-green-200", text: "text-green-700", dot: "bg-green-500" },
-    paused: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", dot: "bg-amber-500" },
-    disabled: { bg: "bg-slate-50", border: "border-slate-200", text: "text-slate-500", dot: "bg-slate-400" },
+  const palette = {
+    active: {
+      bg: colors.flameSoft,
+      border: BORDER_FLAME,
+      text: colors.flameDeep,
+      dot: colors.flame,
+    },
+    paused: {
+      bg: colors.brassSoft,
+      border: BORDER_FLAME,
+      text: colors.brass,
+      dot: colors.brass,
+    },
+    disabled: {
+      bg: colors.mist,
+      border: colors.line,
+      text: colors.inkFaint,
+      dot: colors.inkFaint,
+    },
   }[worker.status];
 
-  const successIcon = worker.successRate >= 0.9 ? <CheckCircle2 size={12} color="#10B981" /> :
-                       worker.successRate >= 0.7 ? <Clock size={12} color="#F59E0B" /> :
-                       <XCircle size={12} color="#EF4444" />;
+  const successIcon =
+    worker.successRate >= 0.9 ? (
+      <CheckCircle2 size={12} color={colors.flame} />
+    ) : worker.successRate >= 0.7 ? (
+      <Clock size={12} color={colors.brass} />
+    ) : (
+      <XCircle size={12} color={colors.danger} />
+    );
 
   return (
-    <View className={`${statusColor.bg} border ${statusColor.border} rounded-2xl p-3 mb-2`}>
-      <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center flex-1">
-          <View className={`w-2 h-2 rounded-full ${statusColor.dot} mr-2`} />
-          <View className="flex-1">
-            <View className="flex-row items-center">
-              <Text className="text-sm font-bold text-slate-900 capitalize">{worker.name}</Text>
-              <Text className={`ml-2 text-[10px] font-semibold ${statusColor.text} uppercase`}>
-                {worker.status}
-              </Text>
-            </View>
-            <Text className="text-[10px] text-slate-500 mt-0.5">
-              {worker.capabilities.slice(0, 3).join(" · ")}
-              {worker.capabilities.length > 3 && ` +${worker.capabilities.length - 3}`}
+    <View style={[styles.workerCard, { backgroundColor: palette.bg, borderColor: palette.border }]}>
+      <View style={styles.workerTop}>
+        <View style={[styles.statusDot, { backgroundColor: palette.dot }]} />
+        <View style={styles.workerInfo}>
+          <View style={styles.workerTitleRow}>
+            <Text style={styles.workerName}>{worker.name}</Text>
+            <Text style={[styles.workerStatus, { color: palette.text }]}>
+              {STATUS_TR[worker.status]}
             </Text>
           </View>
+          <Text style={styles.workerCaps}>
+            {worker.capabilities.slice(0, 3).join(" · ")}
+            {worker.capabilities.length > 3 ? ` +${worker.capabilities.length - 3}` : ""}
+          </Text>
         </View>
       </View>
 
-      {worker.recentCalls > 0 && (
-        <View className="flex-row items-center justify-between mt-2 pt-2 border-t border-current/10">
-          <View className="flex-row items-center">
+      {worker.recentCalls > 0 ? (
+        <View style={styles.workerFooter}>
+          <View style={styles.workerFooterLeft}>
             {successIcon}
-            <Text className="text-xs text-slate-700 ml-1.5">
+            <Text style={styles.workerFooterText}>
               {worker.recentCalls} çağrı · {Math.round(worker.successRate * 100)}% başarı
             </Text>
           </View>
-          <View className="flex-row items-center">
-            <Text className="text-xs text-slate-500">
-              ${worker.avgCost.toFixed(4)} · {Math.round(worker.avgDurationMs)}ms
-            </Text>
-          </View>
+          <Text style={styles.workerCost}>
+            ${worker.avgCost.toFixed(4)} · {Math.round(worker.avgDurationMs)}ms
+          </Text>
         </View>
-      )}
+      ) : null}
     </View>
   );
 }
 
-function ArchRow({
-  icon,
-  label,
-  sub,
-  color,
-}: {
-  icon: string;
-  label: string;
-  sub: string;
-  color: string;
-}) {
+function ArchRow({ label, sub }: { label: string; sub: string }) {
   return (
-    <View className="flex-row items-center">
-      <View className={`w-12 h-12 rounded-xl ${color} items-center justify-center`}>
-        <Text className="text-2xl">{icon}</Text>
+    <View style={styles.archRow}>
+      <View style={styles.archIcon}>
+        <Text style={styles.archIconText}>{label.charAt(0)}</Text>
       </View>
-      <View className="ml-3 flex-1">
-        <Text className="text-sm font-semibold text-slate-900">{label}</Text>
-        <Text className="text-[10px] text-slate-500 mt-0.5">{sub}</Text>
+      <View style={styles.archText}>
+        <Text style={styles.archLabel}>{label}</Text>
+        <Text style={styles.archSub}>{sub}</Text>
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  scroll: { paddingBottom: space.section },
+  hero: {
+    marginHorizontal: space.xl,
+    marginTop: space.lg,
+    backgroundColor: colors.flameDeep,
+    borderRadius: radius.lg,
+    padding: space.lg,
+    ...shadow.soft,
+  },
+  heroRow: { flexDirection: "row", alignItems: "center" },
+  heroText: { marginLeft: space.md, flex: 1 },
+  heroTitle: {
+    fontFamily: fonts.displayMed,
+    fontSize: 16,
+    color: colors.white,
+  },
+  heroSub: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: "rgba(255,255,255,0.85)",
+    marginTop: 2,
+  },
+  heroStats: {
+    flexDirection: "row",
+    marginTop: space.md,
+    paddingTop: space.md,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.2)",
+  },
+  headerStat: { flex: 1 },
+  headerStatLabelRow: { flexDirection: "row", alignItems: "center" },
+  headerStatLabel: {
+    marginLeft: 6,
+    fontFamily: fonts.body,
+    fontSize: 10,
+    color: "rgba(255,255,255,0.8)",
+  },
+  headerStatValue: {
+    fontFamily: fonts.displayMed,
+    fontSize: 18,
+    color: colors.white,
+    marginTop: 2,
+  },
+  section: { paddingHorizontal: space.xl, paddingTop: space.xl },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: space.md,
+  },
+  sectionTitle: {
+    fontFamily: fonts.displayMed,
+    fontSize: 16,
+    color: colors.ink,
+    letterSpacing: -0.3,
+  },
+  sectionMeta: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkFaint,
+  },
+  loading: { paddingVertical: space.xxl, alignItems: "center" },
+  workerCard: {
+    borderWidth: 1,
+    borderRadius: radius.lg,
+    padding: space.md,
+    marginBottom: space.sm,
+    ...shadow.soft,
+  },
+  workerTop: { flexDirection: "row", alignItems: "center" },
+  statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: space.sm },
+  workerInfo: { flex: 1 },
+  workerTitleRow: { flexDirection: "row", alignItems: "center" },
+  workerName: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.ink,
+    textTransform: "capitalize",
+  },
+  workerStatus: {
+    marginLeft: space.sm,
+    fontFamily: fonts.bodySemi,
+    fontSize: 9,
+  },
+  workerCaps: {
+    fontFamily: fonts.body,
+    fontSize: 10,
+    color: colors.inkFaint,
+    marginTop: 2,
+  },
+  workerFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: space.sm,
+    paddingTop: space.sm,
+    borderTopWidth: 1,
+    borderTopColor: BORDER_FLAME,
+  },
+  workerFooterLeft: { flexDirection: "row", alignItems: "center" },
+  workerFooterText: {
+    marginLeft: 6,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkMuted,
+  },
+  workerCost: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkFaint,
+  },
+  archCard: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: BORDER_FLAME,
+    borderRadius: radius.lg,
+    padding: space.lg,
+    ...shadow.soft,
+  },
+  archRow: { flexDirection: "row", alignItems: "center" },
+  archIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.sm,
+    backgroundColor: colors.flameSoft,
+    borderWidth: 1,
+    borderColor: BORDER_FLAME,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  archIconText: {
+    fontFamily: fonts.displayMed,
+    fontSize: 16,
+    color: colors.flameDeep,
+  },
+  archText: { marginLeft: space.md, flex: 1 },
+  archLabel: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.ink,
+  },
+  archSub: {
+    fontFamily: fonts.body,
+    fontSize: 10,
+    color: colors.inkFaint,
+    marginTop: 2,
+  },
+  archLine: {
+    height: 12,
+    marginLeft: 21,
+    borderLeftWidth: 1,
+    borderStyle: "dashed",
+    borderColor: BORDER_FLAME,
+  },
+});

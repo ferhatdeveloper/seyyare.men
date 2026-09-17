@@ -1,11 +1,26 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { BrandMark, BrandWordmark } from "../../components/brand";
+import { Button } from "../../components/ui/Button";
+import { Field } from "../../components/ui/Field";
 import { api } from "../../lib/api";
-import { auth } from "../../lib/auth";
+import { auth, type UserGender } from "../../lib/auth";
+import { colors, fonts, radius, shadow, space } from "../../lib/theme";
 
 export default function RegisterScreen() {
   const { t } = useTranslation();
@@ -14,6 +29,7 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [role, setRole] = useState<"user" | "dealer">("user");
+  const [gender, setGender] = useState<UserGender | null>(null);
   const [loading, setLoading] = useState(false);
 
   const onRegister = async () => {
@@ -38,7 +54,10 @@ export default function RegisterScreen() {
         Alert.alert(res.error);
         return;
       }
-      await auth.saveTokens(res);
+      await auth.saveTokens({
+        ...res,
+        user: { ...res.user, gender: gender ?? undefined },
+      });
       router.replace("/(tabs)");
     } catch {
       Alert.alert(t("errors.serverError"));
@@ -48,96 +67,249 @@ export default function RegisterScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <View style={styles.root}>
+      <StatusBar style="light" />
+      <LinearGradient
+        colors={[colors.ink, "#141414", colors.paper]}
+        locations={[0, 0.45, 0.85]}
+        style={styles.heroWash}
+      />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
+        style={styles.flex}
       >
-        <ScrollView className="flex-1" contentContainerClassName="p-6">
-          <Text className="text-3xl font-bold text-slate-900 mb-2">
-            {t("auth.register")}
-          </Text>
-          <Text className="text-sm text-slate-500 mb-8">{t("auth.registerSubtitle")}</Text>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <SafeAreaView edges={["top"]}>
+            <View style={styles.brand}>
+              <BrandMark size="lg" style={styles.logo} />
+              <BrandWordmark script="latin" size={32} tone="light" />
+            </View>
+          </SafeAreaView>
 
-          {/* Role selector */}
-          <View className="flex-row mb-6 bg-slate-100 rounded-xl p-1">
-            <TouchableOpacity
-              className={`flex-1 py-2.5 rounded-lg ${role === "user" ? "bg-white" : ""}`}
-              onPress={() => setRole("user")}
-            >
-              <Text
-                className={`text-center text-sm font-semibold ${
-                  role === "user" ? "text-slate-900" : "text-slate-500"
-                }`}
+          <View style={styles.sheet}>
+            <Text style={styles.title}>{t("auth.register")}</Text>
+            <Text style={styles.subtitle}>{t("auth.registerSubtitle")}</Text>
+
+            <View style={styles.roleRow}>
+              <TouchableOpacity
+                style={[styles.roleBtn, role === "user" && styles.roleBtnActive]}
+                onPress={() => setRole("user")}
               >
-                Bireysel
+                <Text style={[styles.roleText, role === "user" && styles.roleTextActive]}>
+                  Bireysel
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.roleBtn, role === "dealer" && styles.roleBtnActive]}
+                onPress={() => setRole("dealer")}
+              >
+                <Text style={[styles.roleText, role === "dealer" && styles.roleTextActive]}>
+                  Galeri / Bayi
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.genderLabel}>{t("gender.label")}</Text>
+            <Text style={styles.genderHint}>{t("gender.hint")}</Text>
+            <View style={styles.genderRow}>
+              {(
+                [
+                  ["female", t("gender.female")],
+                  ["male", t("gender.male")],
+                  ["unspecified", t("gender.unspecified")],
+                ] as Array<[UserGender, string]>
+              ).map(([value, label]) => (
+                <TouchableOpacity
+                  key={value}
+                  style={[styles.genderBtn, gender === value && styles.genderBtnActive]}
+                  onPress={() => setGender(value)}
+                >
+                  <Text
+                    style={[styles.genderText, gender === value && styles.genderTextActive]}
+                  >
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Field
+              label={t("auth.displayName")}
+              value={displayName}
+              onChangeText={setDisplayName}
+              autoCapitalize="words"
+            />
+            <Field
+              label={t("auth.email")}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <Field
+              label={t("auth.phone")}
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+            />
+            <Field
+              label={t("auth.password")}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              containerStyle={styles.passwordField}
+            />
+
+            <Button
+              label={loading ? t("common.loading") : t("auth.register")}
+              variant="primary"
+              loading={loading}
+              disabled={loading}
+              onPress={onRegister}
+            />
+
+            <TouchableOpacity
+              style={styles.linkWrap}
+              onPress={() => router.replace("/auth/login")}
+            >
+              <Text style={styles.linkMuted}>
+                {t("auth.hasAccount")}{" "}
+                <Text style={styles.link}>{t("auth.login")}</Text>
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              className={`flex-1 py-2.5 rounded-lg ${role === "dealer" ? "bg-white" : ""}`}
-              onPress={() => setRole("dealer")}
-            >
-              <Text
-                className={`text-center text-sm font-semibold ${
-                  role === "dealer" ? "text-slate-900" : "text-slate-500"
-                }`}
-              >
-                Galeri / Bayi
-              </Text>
-            </TouchableOpacity>
+
+            <Text style={styles.terms}>{t("auth.termsNotice")}</Text>
           </View>
-
-          <Text className="text-sm font-semibold text-slate-700 mb-2">{t("auth.displayName")}</Text>
-          <TextInput
-            className="bg-slate-100 rounded-xl px-4 py-3 text-base text-slate-900 mb-4"
-            value={displayName}
-            onChangeText={setDisplayName}
-            autoCapitalize="words"
-          />
-
-          <Text className="text-sm font-semibold text-slate-700 mb-2">{t("auth.email")}</Text>
-          <TextInput
-            className="bg-slate-100 rounded-xl px-4 py-3 text-base text-slate-900 mb-4"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
-
-          <Text className="text-sm font-semibold text-slate-700 mb-2">{t("auth.phone")}</Text>
-          <TextInput
-            className="bg-slate-100 rounded-xl px-4 py-3 text-base text-slate-900 mb-4"
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-          />
-
-          <Text className="text-sm font-semibold text-slate-700 mb-2">{t("auth.password")}</Text>
-          <TextInput
-            className="bg-slate-100 rounded-xl px-4 py-3 text-base text-slate-900 mb-6"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
-
-          <TouchableOpacity
-            className="bg-primary-600 rounded-xl py-4 items-center mb-4"
-            style={{ backgroundColor: "#0284C7", opacity: loading ? 0.6 : 1 }}
-            disabled={loading}
-            onPress={onRegister}
-          >
-            <Text className="text-white font-bold text-base">
-              {loading ? t("common.loading") : t("auth.register")}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity className="items-center py-3" onPress={() => router.back()}>
-            <Text className="text-primary-600 font-semibold">
-              {t("auth.hasAccount")} {t("auth.login")}
-            </Text>
-          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.paper },
+  flex: { flex: 1 },
+  heroWash: {
+    ...StyleSheet.absoluteFillObject,
+    height: 280,
+  },
+  scroll: { flexGrow: 1, paddingBottom: space.section },
+  brand: {
+    alignItems: "center",
+    paddingTop: space.lg,
+    paddingBottom: space.xl,
+    paddingHorizontal: space.xl,
+  },
+  logo: {
+    marginBottom: 10,
+  },
+  sheet: {
+    flex: 1,
+    backgroundColor: colors.white,
+    borderTopLeftRadius: radius.xl,
+    borderTopRightRadius: radius.xl,
+    paddingHorizontal: space.xxl,
+    paddingTop: space.xxl,
+    paddingBottom: space.xxl,
+    minHeight: 520,
+    ...shadow.soft,
+  },
+  title: {
+    fontFamily: fonts.display,
+    fontSize: 24,
+    color: colors.ink,
+    marginBottom: space.sm,
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.inkFaint,
+    marginBottom: space.xl,
+  },
+  roleRow: {
+    flexDirection: "row",
+    backgroundColor: colors.mist,
+    borderRadius: radius.md,
+    padding: 4,
+    marginBottom: space.xl,
+  },
+  roleBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: radius.sm,
+    alignItems: "center",
+  },
+  roleBtnActive: {
+    backgroundColor: colors.flame,
+  },
+  roleText: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 13,
+    color: colors.inkFaint,
+  },
+  roleTextActive: { color: colors.white },
+  genderLabel: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 13,
+    color: colors.ink,
+    marginBottom: 4,
+  },
+  genderHint: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.inkFaint,
+    marginBottom: space.sm,
+    lineHeight: 16,
+  },
+  genderRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: space.xl,
+  },
+  genderBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.mist,
+  },
+  genderBtnActive: {
+    backgroundColor: colors.flame,
+    borderColor: colors.flame,
+  },
+  genderText: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 13,
+    color: colors.ink,
+  },
+  genderTextActive: { color: colors.white },
+  passwordField: { marginBottom: space.xxl },
+  linkWrap: { alignItems: "center", paddingVertical: space.md, marginTop: space.sm },
+  linkMuted: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.inkFaint,
+  },
+  link: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.flame,
+  },
+  terms: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkFaint,
+    textAlign: "center",
+    marginTop: space.xl,
+    paddingHorizontal: space.lg,
+    lineHeight: 16,
+  },
+});

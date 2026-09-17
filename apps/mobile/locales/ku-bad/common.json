@@ -8,7 +8,8 @@
     "search": "Lêgerîn",
     "sell": "Firotin",
     "rentals": "Kirê",
-    "profile": "Profîl"
+    "profile": "Profîl",
+    "stores": "Dikan"
   },
   "auth": {
     "login": "Têkeve",
@@ -94,7 +95,15 @@
     "totalPrice": "Bi giştî",
     "book": "Niha rezerve bike",
     "dynamicPricing": "Bihayê dînamîk",
-    "priceBreakdown": "Veqetandina bihayê"
+    "priceBreakdown": "Veqetandina bihayê",
+    "familyOption": "Vebijarka malbatê",
+    "familyDriverTitle": "Ajokerê jin",
+    "familyDriverDesc": "Kirê bi ajokerê jin ji bo malbatan. Tenê endamên jin dikarin hilbijêrin.",
+    "familyDriverOn": "Ajokerê jin hate xwestin",
+    "familyDriverLocked": "Ji bo vê vebijarkê cinsê profîlê divê jin be.",
+    "familyDriverLogin": "Ji bo xwestina ajokerê jin têkeve.",
+    "familyDriverSetGender": "Di profîlê de cinsê bike jin.",
+    "familyHint": "Vebijarka ajokerê jin ji bo malbatê — tenê endamên jin"
   },
   "vehicle": {
     "specs": "Taybetmendî",
@@ -156,5 +165,17 @@
     "validationError": "Ji kerema xwe hemû qad rast dagire",
     "notFound": "Nehat dîtin",
     "imageUploadFailed": "Wêne nehat barkirin"
+  },
+  "splash": {
+    "sell": "Firotina erebe",
+    "rent": "Kirê",
+    "taxi": "Takşî bang bike"
+  },
+  "gender": {
+    "label": "Cins",
+    "female": "Jin",
+    "male": "Mêr",
+    "unspecified": "Naxwazim bibêjim",
+    "hint": "Ji bo kirêya malbatê / ajokerê jin divê jin were hilbijartin"
   }
 }

@@ -1,13 +1,18 @@
+import { Image, StyleSheet } from "react-native";
 import { useQuery } from "@tanstack/react-query";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
+import { setStatusBarStyle } from "expo-status-bar";
 import { Calendar, MapPin, Sparkles, ChevronRight } from "lucide-react-native";
+import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from "react-native";
-import { Image } from "expo-image";
-import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Screen, ScreenHeader } from "../../components/ui/Screen";
 import { api } from "../../lib/api";
 import { storage } from "../../lib/clients";
+import { colors, fonts, radius, shadow, space } from "../../lib/theme";
+
+const BORDER_FLAME = "#FFD8B8";
 
 interface Rental {
   id: string;
@@ -33,6 +38,12 @@ interface Rental {
 export default function RentalsScreen() {
   const { t, i18n } = useTranslation();
 
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle("light");
+    }, []),
+  );
+
   const { data, isLoading } = useQuery({
     queryKey: ["rentals", i18n.language],
     queryFn: () =>
@@ -41,109 +52,275 @@ export default function RentalsScreen() {
       ),
   });
 
+  const rentals = (data as Rental[] | undefined) ?? [];
+
   return (
-    <SafeAreaView className="flex-1 bg-slate-50" edges={["top"]}>
-      <View className="px-5 py-4 bg-white border-b border-slate-200">
-        <Text className="text-2xl font-bold text-slate-900">{t("rentals.title")}</Text>
-        <View className="flex-row items-center mt-2 bg-primary-50 rounded-xl px-3 py-2">
-          <Sparkles size={14} color="#0EA5E9" />
-          <Text className="ml-2 text-xs text-primary-700">
-            {t("rentals.dynamicPricing")}: Talep, sezon ve tatil günlerine göre fiyat değişir
-          </Text>
-        </View>
+    <Screen edges={["top"]}>
+      <ScreenHeader title={t("rentals.title")} large />
+      <View style={styles.hint}>
+        <Sparkles size={14} color={colors.flame} />
+        <Text style={styles.hintText}>
+          {t("rentals.dynamicPricing")}: Talep, sezon ve tatil günlerine göre fiyat değişir
+        </Text>
+      </View>
+      <View style={styles.familyHint}>
+        <Text style={styles.familyHintText}>{t("rentals.familyHint")}</Text>
       </View>
 
       {isLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#0EA5E9" />
+        <View style={styles.center}>
+          <ActivityIndicator color={colors.flame} />
         </View>
-      ) : data && data.length > 0 ? (
+      ) : rentals.length > 0 ? (
         <FlatList
-          data={data}
+          data={rentals}
           keyExtractor={(r) => r.id}
           renderItem={({ item }) => <RentalCard rental={item} />}
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={styles.list}
         />
       ) : (
-        <View className="flex-1 items-center justify-center px-8">
-          <Calendar size={48} color="#CBD5E1" />
-          <Text className="text-slate-500 mt-4 text-base">Henüz kiralık araç yok</Text>
-          <Text className="text-slate-400 text-sm text-center mt-2">
+        <View style={styles.empty}>
+          <View style={styles.emptyIconWrap}>
+            <Calendar size={36} color={colors.flame} strokeWidth={1.8} />
+          </View>
+          <Text style={styles.emptyTitle}>Henüz kiralık araç yok</Text>
+          <Text style={styles.emptySub}>
             Araç sahipleri kiralama seçeneklerini buradan yayınlayabilir
           </Text>
         </View>
       )}
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 function RentalCard({ rental }: { rental: Rental }) {
   const { t } = useTranslation();
   const cover = rental.vehicle?.cover_url;
-  const dailyRate = Number(rental.daily_rate_amount).toLocaleString();
+  const dailyRate = Number(rental.daily_rate_amount).toLocaleString("tr-TR");
   const currency = rental.daily_rate_currency;
 
   return (
     <TouchableOpacity
-      className="bg-white rounded-2xl mb-3 overflow-hidden shadow-sm border border-slate-100"
+      style={styles.card}
       onPress={() => router.push(`/rental/${rental.id}`)}
+      activeOpacity={0.92}
     >
-      <View className="relative">
+      <View>
         {cover ? (
           <Image
             source={{ uri: cover.startsWith("http") ? cover : `${storage.url}/${cover}` }}
-            style={{ width: "100%", height: 180 }}
-            contentFit="cover"
-            transition={300}
+            style={styles.coverImg}
+            resizeMode="cover"
           />
         ) : (
-          <View className="w-full h-[180px] bg-slate-200 items-center justify-center">
-            <Text className="text-slate-400 text-sm">Fotoğraf yok</Text>
+          <View style={styles.coverPlaceholder}>
+            <Text style={styles.coverPlaceholderText}>Fotoğraf yok</Text>
           </View>
         )}
 
-        <View className="absolute top-3 left-3 bg-green-600 rounded-lg px-2.5 py-1 flex-row items-center">
-          <Calendar size={12} color="#FFFFFF" />
-          <Text className="text-white text-xs font-bold ml-1">
-            {t("rentals.perDay")}
-          </Text>
+        <View style={styles.badgeDaily}>
+          <Calendar size={12} color={colors.white} />
+          <Text style={styles.badgeDailyText}>{t("rentals.perDay")}</Text>
         </View>
 
-        {rental.instant_book && (
-          <View className="absolute top-3 right-3 bg-amber-500 rounded-lg px-2.5 py-1">
-            <Text className="text-white text-xs font-bold">
-              ⚡ {t("rentals.instantBook")}
-            </Text>
+        {rental.instant_book ? (
+          <View style={styles.badgeInstant}>
+            <Text style={styles.badgeInstantText}>{t("rentals.instantBook")}</Text>
           </View>
-        )}
+        ) : null}
       </View>
 
-      <View className="p-4">
-        <Text className="text-base font-bold text-slate-900" numberOfLines={1}>
-          {rental.vehicle?.title_original ?? "Araç"} {rental.vehicle?.year ? `(${rental.vehicle.year})` : ""}
+      <View style={styles.cardBody}>
+        <Text style={styles.cardTitle} numberOfLines={1}>
+          {rental.vehicle?.title_original ?? "Araç"}{" "}
+          {rental.vehicle?.year ? `(${rental.vehicle.year})` : ""}
         </Text>
 
-        <View className="flex-row items-center mt-1.5">
-          <MapPin size={12} color="#64748B" />
-          <Text className="text-xs text-slate-500 ml-1">
+        <View style={styles.locationRow}>
+          <MapPin size={12} color={colors.inkFaint} />
+          <Text style={styles.locationText}>
             {[rental.city, rental.country_code].filter(Boolean).join(", ") || "Konum belirtilmemiş"}
           </Text>
         </View>
 
-        <View className="flex-row items-center justify-between mt-3 pt-3 border-t border-slate-100">
+        <View style={styles.footer}>
           <View>
-            <Text className="text-xl font-bold text-primary-600">
-              {dailyRate} <Text className="text-sm">{currency}</Text>
+            <Text style={styles.price}>
+              {dailyRate} <Text style={styles.currency}>{currency}</Text>
             </Text>
-            <Text className="text-[10px] text-slate-500">{t("rentals.perDay")}</Text>
+            <Text style={styles.perDay}>{t("rentals.perDay")}</Text>
           </View>
-          <View className="flex-row items-center">
-            <View className="bg-primary-600 rounded-full w-9 h-9 items-center justify-center mr-2" style={{ backgroundColor: "#0284C7" }}>
-              <Text className="text-white font-bold text-base">→</Text>
-            </View>
+          <View style={styles.arrowBtn}>
+            <ChevronRight size={20} color={colors.white} />
           </View>
         </View>
       </View>
     </TouchableOpacity>
   );
 }
+
+const styles = StyleSheet.create({
+  hint: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginHorizontal: space.xl,
+    marginBottom: space.md,
+    padding: space.md,
+    backgroundColor: colors.flameSoft,
+    borderWidth: 1,
+    borderColor: BORDER_FLAME,
+    borderRadius: radius.md,
+    gap: space.sm,
+  },
+  hintText: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.flameDeep,
+    lineHeight: 17,
+  },
+  familyHint: {
+    marginHorizontal: space.lg,
+    marginBottom: space.md,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    backgroundColor: colors.white,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  familyHintText: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.inkMuted,
+    lineHeight: 17,
+  },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  list: { padding: space.lg, paddingTop: 0, paddingBottom: 40 },
+  empty: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: space.xxl,
+  },
+  emptyIconWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: colors.flameSoft,
+    borderWidth: 1,
+    borderColor: BORDER_FLAME,
+    alignItems: "center",
+    justifyContent: "center",
+    ...shadow.soft,
+  },
+  emptyTitle: {
+    fontFamily: fonts.displayMed,
+    fontSize: 20,
+    color: colors.ink,
+    marginTop: space.xl,
+    letterSpacing: -0.3,
+  },
+  emptySub: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.inkMuted,
+    textAlign: "center",
+    marginTop: space.sm,
+    lineHeight: 21,
+    maxWidth: 280,
+  },
+  card: {
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    marginBottom: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: colors.line,
+    ...shadow.card,
+  },
+  coverImg: { width: "100%", height: 176 },
+  coverPlaceholder: {
+    width: "100%",
+    height: 176,
+    backgroundColor: colors.mist,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  coverPlaceholderText: { fontFamily: fonts.body, fontSize: 13, color: colors.inkFaint },
+  badgeDaily: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.flameDeep,
+    borderRadius: radius.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    gap: 4,
+  },
+  badgeDailyText: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 11,
+    color: colors.white,
+  },
+  badgeInstant: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    backgroundColor: colors.brass,
+    borderRadius: radius.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  badgeInstantText: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 11,
+    color: colors.white,
+  },
+  cardBody: { padding: space.lg },
+  cardTitle: {
+    fontFamily: fonts.displayMed,
+    fontSize: 16,
+    color: colors.ink,
+    letterSpacing: -0.2,
+  },
+  locationRow: { flexDirection: "row", alignItems: "center", marginTop: 6 },
+  locationText: {
+    marginLeft: 4,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.inkFaint,
+  },
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: space.md,
+    paddingTop: space.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.mist,
+  },
+  price: {
+    fontFamily: fonts.display,
+    fontSize: 20,
+    color: colors.flame,
+    letterSpacing: -0.3,
+  },
+  currency: { fontSize: 13, fontFamily: fonts.bodyMed },
+  perDay: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkFaint,
+    marginTop: 2,
+  },
+  arrowBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.sm,
+    backgroundColor: colors.flame,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

@@ -2,13 +2,15 @@ import { router } from "expo-router";
 import { ChevronLeft, Loader, Volume2 } from "lucide-react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
-import { Audio } from "expo-audio";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { createAudioPlayer } from "expo-audio";
 
+import { BrandMark } from "../components/brand";
 import { VoiceInput } from "../components/agent/VoiceInput";
+import { Screen } from "../components/ui/Screen";
 import { runAgent } from "../lib/agent-client";
 import { orchestrator } from "../lib/clients";
+import { colors, fonts, radius, shadow, space } from "../lib/theme";
 
 interface Message {
   id: string;
@@ -19,7 +21,7 @@ interface Message {
 }
 
 export default function VoiceScreen() {
-  const { t } = useTranslation();
+  const { t: _t } = useTranslation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [processing, setProcessing] = useState(false);
 
@@ -34,16 +36,12 @@ export default function VoiceScreen() {
     setProcessing(true);
 
     try {
-      // AI agent'a gönder
       const handle = runAgent({
         text,
         locale: language.startsWith("ku") ? (language as "ku-bad" | "ku-sor") : "tr",
       });
       await handle.promise;
 
-      // UI store'dan AI asistan reply card'ını bul
-      // (production'da event stream ile mesajlar gelir)
-      // Şimdilik placeholder yanıt
       const aiMsg: Message = {
         id: `msg-${Date.now()}-ai`,
         role: "assistant",
@@ -52,7 +50,10 @@ export default function VoiceScreen() {
       };
       setMessages((m) => [...m, aiMsg]);
 
-      // Speech response üret (TTS)
+      if (text.trim()) {
+        router.push({ pathname: "/(tabs)/search", params: { q: text.trim() } });
+      }
+
       try {
         const ttsRes = await fetch(`${orchestrator.url}/voice/speech`, {
           method: "POST",
@@ -65,7 +66,6 @@ export default function VoiceScreen() {
         });
         if (ttsRes.ok) {
           const data = (await ttsRes.json()) as { audioBase64: string; mimeType: string };
-          // Base64'i çal
           await playAudio(data.audioBase64, data.mimeType);
         }
       } catch (err) {
@@ -80,19 +80,8 @@ export default function VoiceScreen() {
 
   const playAudio = async (base64: string, mimeType: string) => {
     try {
-      // Base64 → Blob → File URI (expo-audio)
-      const binaryString = atob(base64);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      const blob = new Blob([bytes], { type: mimeType });
-      const url = URL.createObjectURL(blob);
-
-      // expo-audio v1.x: createAudioPlayer + play
-      const player = await Audio.createAudioPlayer(url);
+      const player = createAudioPlayer({ uri: `data:${mimeType};base64,${base64}` });
       player.play();
-      // Player otomatik temizlenmez — release sonrası
       setTimeout(() => player.release(), 30000);
     } catch (err) {
       console.warn("[voice] audio playback failed:", err);
@@ -100,69 +89,194 @@ export default function VoiceScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
-      <View className="flex-row items-center px-5 py-3 border-b border-slate-200">
-        <TouchableOpacity onPress={() => router.back()} className="mr-3">
-          <ChevronLeft size={22} color="#0F172A" />
+    <Screen edges={["top"]}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} hitSlop={10}>
+          <ChevronLeft size={22} color={colors.ink} strokeWidth={2} />
         </TouchableOpacity>
-        <Volume2 size={20} color="#0EA5E9" />
-        <Text className="ml-2 text-lg font-bold text-slate-900">Sesli Asistan</Text>
+        <BrandMark size="sm" style={styles.headerPin} />
+        <View style={styles.headerText}>
+          <Text style={styles.headerTitle}>Sesli Asistan</Text>
+          <Text style={styles.headerSub}>seyyare.men</Text>
+        </View>
       </View>
 
-      <ScrollView className="flex-1 px-4 py-4">
-        {messages.length === 0 && (
-          <View className="items-center py-12">
-            <View className="bg-primary-50 rounded-full p-6 mb-4">
-              <Volume2 size={48} color="#0EA5E9" />
+      <ScrollView style={styles.flex} contentContainerStyle={styles.chat}>
+        {messages.length === 0 ? (
+          <View style={styles.empty}>
+            <View style={styles.emptyCard}>
+              <View style={styles.emptyIcon}>
+                <Volume2 size={28} color={colors.flame} />
+              </View>
+              <Text style={styles.emptyTitle}>Mikrofona bas ve konuş</Text>
+              <Text style={styles.emptySub}>
+                "BMW 320i 2020 model İstanbul'da ne kadar?" gibi sorular sorabilirsin. Tüm dillerde çalışır.
+              </Text>
             </View>
-            <Text className="text-slate-900 font-bold text-lg mb-2">
-              Mikrofona bas ve konuş
-            </Text>
-            <Text className="text-slate-500 text-sm text-center px-8 leading-5">
-              "BMW 320i 2020 model İstanbul'da ne kadar?" gibi sorular sorabilirsin. Tüm dillerde çalışır.
-            </Text>
           </View>
-        )}
+        ) : null}
 
         {messages.map((m) => (
-          <View
-            key={m.id}
-            className={`mb-3 ${m.role === "user" ? "items-end" : "items-start"}`}
-          >
-            <View
-              className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                m.role === "user" ? "bg-primary-600" : "bg-slate-100"
-              }`}
-              style={m.role === "user" ? { backgroundColor: "#0284C7" } : {}}
-            >
-              <Text className={`text-sm leading-5 ${m.role === "user" ? "text-white" : "text-slate-900"}`}>
-                {m.content}
-              </Text>
-              {m.audioUrl && (
-                <Text className="text-[10px] text-slate-500 mt-1 italic">
-                  Audio response oynatıldı
-                </Text>
-              )}
+          <View key={m.id} style={[styles.msgRow, m.role === "user" ? styles.msgRowUser : styles.msgRowAi]}>
+            <View style={[styles.bubble, m.role === "user" ? styles.bubbleUser : styles.bubbleAi]}>
+              <Text style={m.role === "user" ? styles.bubbleTextUser : styles.bubbleTextAi}>{m.content}</Text>
+              {m.audioUrl ? (
+                <Text style={styles.audioNote}>Audio response oynatıldı</Text>
+              ) : null}
             </View>
           </View>
         ))}
 
-        {processing && (
-          <View className="items-start mb-3">
-            <View className="bg-slate-100 rounded-2xl px-4 py-3 flex-row items-center">
-              <Loader size={16} color="#64748B" className="mr-2" />
-              <Text className="text-sm text-slate-700">AI düşünüyor...</Text>
+        {processing ? (
+          <View style={styles.msgRowAi}>
+            <View style={[styles.bubble, styles.bubbleAi, styles.typingRow]}>
+              <Loader size={16} color={colors.flame} />
+              <Text style={styles.typingText}>AI düşünüyor...</Text>
             </View>
           </View>
-        )}
+        ) : null}
       </ScrollView>
 
-      <View className="items-center py-6 border-t border-slate-200">
+      <View style={styles.footer}>
         <VoiceInput onTranscript={handleTranscript} locale="tr" size="lg" />
-        <Text className="text-xs text-slate-500 mt-3">
+        <Text style={[styles.footerHint, processing && styles.footerHintActive]}>
           {processing ? "AI yanıt veriyor..." : "Konuşmak için dokun"}
         </Text>
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+    backgroundColor: colors.paper,
+    gap: space.sm,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.sm,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.line,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerPin: {},
+  headerText: { flex: 1 },
+  headerTitle: {
+    fontFamily: fonts.displayMed,
+    fontSize: 17,
+    color: colors.ink,
+    letterSpacing: -0.3,
+  },
+  headerSub: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.flame,
+    marginTop: 1,
+  },
+  chat: { paddingHorizontal: space.lg, paddingVertical: space.lg },
+  empty: { alignItems: "center", paddingVertical: space.xl },
+  emptyCard: {
+    width: "100%",
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.line,
+    padding: space.xxl,
+    alignItems: "center",
+    ...shadow.soft,
+  },
+  emptyIcon: {
+    backgroundColor: colors.flameSoft,
+    borderRadius: radius.md,
+    padding: space.lg,
+    marginBottom: space.lg,
+    borderWidth: 1,
+    borderColor: "#FFD8B8",
+  },
+  emptyTitle: {
+    fontFamily: fonts.displayMed,
+    fontSize: 18,
+    color: colors.ink,
+    marginBottom: space.sm,
+    letterSpacing: -0.3,
+  },
+  emptySub: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.inkFaint,
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  msgRow: { marginBottom: space.md },
+  msgRowUser: { alignItems: "flex-end" },
+  msgRowAi: { alignItems: "flex-start" },
+  bubble: {
+    maxWidth: "85%",
+    borderRadius: radius.lg,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+  },
+  bubbleUser: {
+    backgroundColor: colors.flame,
+    borderBottomRightRadius: 6,
+    ...shadow.soft,
+  },
+  bubbleAi: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderBottomLeftRadius: 6,
+  },
+  bubbleTextUser: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.white,
+  },
+  bubbleTextAi: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.ink,
+  },
+  audioNote: {
+    fontFamily: fonts.body,
+    fontSize: 10,
+    color: "rgba(255,255,255,0.75)",
+    marginTop: 4,
+    fontStyle: "italic",
+  },
+  typingRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  typingText: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.inkMuted,
+  },
+  footer: {
+    alignItems: "center",
+    paddingVertical: space.xxl,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+    backgroundColor: colors.paper,
+  },
+  footerHint: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkFaint,
+    marginTop: space.md,
+  },
+  footerHintActive: {
+    color: colors.flame,
+    fontFamily: fonts.bodySemi,
+  },
+});

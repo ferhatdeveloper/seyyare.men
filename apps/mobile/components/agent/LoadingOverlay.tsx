@@ -1,8 +1,8 @@
-// LoadingOverlay — orchestrator'ın aktif agent loading state'lerini gösterir
-
-import { ActivityIndicator, View, Text } from "react-native";
-import { useUIStore } from "../../lib/ui-store";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { useUIStore } from "../../lib/ui-store";
+import { colors, fonts, radius, shadow, space } from "../../lib/theme";
 
 export function LoadingOverlay() {
   const loading = useUIStore((s) => s.loading);
@@ -13,27 +13,50 @@ export function LoadingOverlay() {
   if (entries.length === 0) return null;
 
   return (
-    <View
-      className="absolute left-0 right-0 z-40 px-4"
-      style={{ bottom: insets.bottom + 80 }}
-      pointerEvents="none"
-    >
+    <View style={[styles.host, { bottom: insets.bottom + 80 }]} pointerEvents="none">
       {entries.map(([agent, state]) => (
-        <View
-          key={agent}
-          className="bg-slate-900/90 rounded-2xl px-4 py-3 mb-2 flex-row items-center"
-        >
-          <ActivityIndicator size="small" color="#FFFFFF" />
-          <View className="ml-3 flex-1">
-            <Text className="text-white text-sm font-semibold">
-              {state.message ?? `${agent} çalışıyor`}
-            </Text>
-            <Text className="text-white/70 text-[10px]">
-              {agent}
-            </Text>
+        <View key={agent} style={styles.toast}>
+          <ActivityIndicator size="small" color={colors.flame} />
+          <View style={styles.textWrap}>
+            <Text style={styles.message}>{state.message ?? `${agent} çalışıyor`}</Text>
+            <Text style={styles.agent}>{agent}</Text>
           </View>
         </View>
       ))}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  host: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    zIndex: 40,
+    paddingHorizontal: space.lg,
+  },
+  toast: {
+    backgroundColor: colors.ink,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: "rgba(255,106,0,0.35)",
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+    marginBottom: space.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    ...shadow.soft,
+  },
+  textWrap: { marginLeft: space.md, flex: 1 },
+  message: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.white,
+  },
+  agent: {
+    fontFamily: fonts.body,
+    fontSize: 10,
+    color: colors.flameMid,
+    marginTop: 2,
+  },
+});

@@ -8,7 +8,8 @@
     "search": "Ara",
     "sell": "İlan Ver",
     "rentals": "Kiralama",
-    "profile": "Profil"
+    "profile": "Profil",
+    "stores": "Mağazalar"
   },
   "auth": {
     "login": "Giriş Yap",
@@ -94,7 +95,22 @@
     "totalPrice": "Toplam",
     "book": "Rezervasyon Yap",
     "dynamicPricing": "Dinamik Fiyat",
-    "priceBreakdown": "Fiyat Dağılımı"
+    "priceBreakdown": "Fiyat Dağılımı",
+    "familyOption": "Aile seçeneği",
+    "familyDriverTitle": "Kadın sürücü",
+    "familyDriverDesc": "Aileler için kadın şoför ile kiralama. Yalnızca kadın üyeler seçebilir.",
+    "familyDriverOn": "Kadın sürücü isteniyor",
+    "familyDriverLocked": "Bu seçenek için profilinizde cinsiyetin kadın olması gerekir.",
+    "familyDriverLogin": "Kadın sürücü seçmek için giriş yapın.",
+    "familyDriverSetGender": "Profilinizde cinsiyeti kadın olarak ayarlayın.",
+    "familyHint": "Aile için kadın sürücü seçeneği mevcut — yalnızca kadın üyeler"
+  },
+  "gender": {
+    "label": "Cinsiyet",
+    "female": "Kadın",
+    "male": "Erkek",
+    "unspecified": "Belirtmek istemiyorum",
+    "hint": "Aile / kadın sürücü kiralama için kadın seçilmelidir"
   },
   "vehicle": {
     "specs": "Özellikler",
@@ -156,5 +172,10 @@
     "validationError": "Lütfen tüm alanları doğru doldurun",
     "notFound": "Bulunamadı",
     "imageUploadFailed": "Fotoğraf yüklenemedi"
+  },
+  "splash": {
+    "sell": "Araç Satış",
+    "rent": "Kiralama",
+    "taxi": "Taksi Çağırma"
   }
 }

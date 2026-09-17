@@ -1,8 +1,7 @@
-// FraudBadge — fraud agent'tan gelen risk değerlendirmesini badge olarak göster
-// Yeşil: low risk, Sarı: medium, Kırmızı: high (manual review)
-
 import { Shield, ShieldCheck, ShieldAlert } from "lucide-react-native";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+
+import { colors, fonts, radius, space } from "../../lib/theme";
 
 interface FraudFlag {
   type: string;
@@ -17,14 +16,36 @@ interface Props {
   explanation: string;
 }
 
-export function FraudBadge({ riskScore, riskLevel, flags, explanation }: Props) {
-  const colors = {
-    low: { bg: "bg-green-50", border: "border-green-200", text: "text-green-900", subtext: "text-green-700", icon: "#10B981", Icon: ShieldCheck },
-    medium: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-900", subtext: "text-amber-700", icon: "#F59E0B", Icon: Shield },
-    high: { bg: "bg-red-50", border: "border-red-200", text: "text-red-900", subtext: "text-red-700", icon: "#EF4444", Icon: ShieldAlert },
-  }[riskLevel];
+const LEVEL = {
+  low: {
+    bg: colors.flameSoft,
+    border: "#FFD8B8",
+    text: colors.flameDeep,
+    sub: colors.flame,
+    icon: colors.flame,
+    Icon: ShieldCheck,
+  },
+  medium: {
+    bg: colors.brassSoft,
+    border: "#FFD8B8",
+    text: colors.ink,
+    sub: colors.brass,
+    icon: colors.brass,
+    Icon: Shield,
+  },
+  high: {
+    bg: "#FCECEC",
+    border: "#F0CACA",
+    text: colors.danger,
+    sub: colors.danger,
+    icon: colors.danger,
+    Icon: ShieldAlert,
+  },
+} as const;
 
-  const { Icon } = colors as { Icon: typeof ShieldCheck; bg: string; border: string; text: string; subtext: string };
+export function FraudBadge({ riskScore, riskLevel, flags, explanation }: Props) {
+  const level = LEVEL[riskLevel];
+  const { Icon } = level;
 
   const label = {
     low: "Düşük Risk",
@@ -33,45 +54,70 @@ export function FraudBadge({ riskScore, riskLevel, flags, explanation }: Props) 
   }[riskLevel];
 
   return (
-    <View className={`${colors.bg} border ${colors.border} rounded-2xl p-4`}>
-      <View className="flex-row items-center mb-2">
-        <Icon size={20} color={colors.icon} />
-        <View className="ml-2 flex-1">
-          <Text className={`text-sm font-bold ${colors.text}`}>
-            {label}
-          </Text>
-          <Text className={`text-xs ${colors.subtext}`}>
-            Risk skoru: {riskScore}/100
-          </Text>
+    <View style={[styles.wrap, { backgroundColor: level.bg, borderColor: level.border }]}>
+      <View style={styles.header}>
+        <Icon size={20} color={level.icon} />
+        <View style={styles.headerText}>
+          <Text style={[styles.title, { color: level.text }]}>{label}</Text>
+          <Text style={[styles.sub, { color: level.sub }]}>Risk skoru: {riskScore}/100</Text>
         </View>
       </View>
 
-      {explanation && (
-        <Text className={`text-xs ${colors.text} mb-2 leading-4`}>{explanation}</Text>
-      )}
+      {explanation ? (
+        <Text style={[styles.explanation, { color: level.text }]}>{explanation}</Text>
+      ) : null}
 
-      {flags.length > 0 && (
-        <View className="border-t border-current/10 pt-2 mt-2">
+      {flags.length > 0 ? (
+        <View style={styles.flags}>
           {flags.map((f, i) => (
-            <View key={i} className="flex-row items-start mb-1">
+            <View key={i} style={styles.flagRow}>
               <Text
-                className={`mr-2 text-xs ${
+                style={[
+                  styles.flagMark,
                   f.severity === "critical"
-                    ? "text-red-600"
+                    ? styles.critical
                     : f.severity === "warning"
-                      ? "text-amber-600"
-                      : "text-slate-500"
-                }`}
+                      ? styles.warning
+                      : styles.info,
+                ]}
               >
-                {f.severity === "critical" ? "⚠" : f.severity === "warning" ? "!" : "i"}
+                {f.severity === "critical" ? "!" : f.severity === "warning" ? "·" : "i"}
               </Text>
-              <Text className={`text-xs ${colors.subtext} flex-1 leading-4`}>
-                {f.message}
-              </Text>
+              <Text style={[styles.flagText, { color: level.sub }]}>{f.message}</Text>
             </View>
           ))}
         </View>
-      )}
+      ) : null}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  wrap: {
+    borderWidth: 1,
+    borderRadius: radius.lg,
+    padding: space.lg,
+  },
+  header: { flexDirection: "row", alignItems: "center", marginBottom: space.sm },
+  headerText: { marginLeft: space.sm, flex: 1 },
+  title: { fontFamily: fonts.bodySemi, fontSize: 14 },
+  sub: { fontFamily: fonts.body, fontSize: 11, marginTop: 2 },
+  explanation: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    marginBottom: space.sm,
+    lineHeight: 16,
+  },
+  flags: {
+    borderTopWidth: 1,
+    borderTopColor: "rgba(10,10,10,0.06)",
+    paddingTop: space.sm,
+    marginTop: space.sm,
+  },
+  flagRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: 4 },
+  flagMark: { marginRight: space.sm, fontFamily: fonts.bodySemi, fontSize: 11 },
+  critical: { color: colors.danger },
+  warning: { color: colors.brass },
+  info: { color: colors.flame },
+  flagText: { flex: 1, fontFamily: fonts.body, fontSize: 11, lineHeight: 16 },
+});

@@ -8,7 +8,8 @@
     "search": "جستجو",
     "sell": "فروش",
     "rentals": "اجاره",
-    "profile": "پروفایل"
+    "profile": "پروفایل",
+    "stores": "فروشگاه‌ها"
   },
   "auth": {
     "login": "ورود",
@@ -94,7 +95,15 @@
     "totalPrice": "مجموع",
     "book": "رزرو کنید",
     "dynamicPricing": "قیمت‌گذاری پویا",
-    "priceBreakdown": "جزئیات قیمت"
+    "priceBreakdown": "جزئیات قیمت",
+    "familyOption": "گزینه خانواده",
+    "familyDriverTitle": "راننده زن",
+    "familyDriverDesc": "اجاره با راننده زن برای خانواده‌ها. فقط اعضای زن می‌توانند انتخاب کنند.",
+    "familyDriverOn": "راننده زن درخواست شد",
+    "familyDriverLocked": "برای این گزینه جنسیت پروفایل باید زن باشد.",
+    "familyDriverLogin": "برای درخواست راننده زن وارد شوید.",
+    "familyDriverSetGender": "در پروفایل جنسیت را زن تنظیم کنید.",
+    "familyHint": "گزینه راننده زن برای خانواده — فقط اعضای زن"
   },
   "vehicle": {
     "specs": "مشخصات",
@@ -156,5 +165,17 @@
     "validationError": "لطفاً همه فیلدها را به درستی پر کنید",
     "notFound": "یافت نشد",
     "imageUploadFailed": "بارگذاری تصویر ناموفق بود"
+  },
+  "splash": {
+    "sell": "فروش خودرو",
+    "rent": "اجاره",
+    "taxi": "درخواست تاکسی"
+  },
+  "gender": {
+    "label": "جنسیت",
+    "female": "زن",
+    "male": "مرد",
+    "unspecified": "ترجیح می‌دهم نگویم",
+    "hint": "برای اجاره خانواده / راننده زن باید زن انتخاب شود"
   }
 }

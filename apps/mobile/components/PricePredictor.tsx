@@ -1,9 +1,12 @@
 import { Sparkles } from "lucide-react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { api } from "../lib/api";
+import { colors, fonts, radius, space } from "../lib/theme";
+
+const BORDER_FLAME = "#FFD8B8";
 
 interface PriceFactor {
   factor: string;
@@ -66,20 +69,15 @@ export function PricePredictor({ vehicle, onSuggestion, currentPrice }: Props) {
   };
 
   return (
-    <TouchableOpacity
-      className="bg-gradient-to-br rounded-2xl p-4 flex-row items-center"
-      style={{ backgroundColor: "#F59E0B" }}
-      onPress={runPriceCheck}
-      disabled={loading}
-    >
-      <View className="bg-white/20 rounded-full p-2 mr-3">
-        <Sparkles size={20} color="#FFFFFF" />
+    <TouchableOpacity style={styles.cta} onPress={runPriceCheck} disabled={loading} activeOpacity={0.9}>
+      <View style={styles.iconWrap}>
+        <Sparkles size={20} color={colors.white} />
       </View>
-      <View className="flex-1">
-        <Text className="text-white font-bold text-sm">{t("sell.aiPricingTitle")}</Text>
-        <Text className="text-white/85 text-xs mt-0.5">{t("sell.getPriceSuggestion")}</Text>
+      <View style={styles.flex}>
+        <Text style={styles.ctaTitle}>{t("sell.aiPricingTitle")}</Text>
+        <Text style={styles.ctaSub}>{t("sell.getPriceSuggestion")}</Text>
       </View>
-      {loading && <ActivityIndicator color="#FFFFFF" />}
+      {loading ? <ActivityIndicator color={colors.white} /> : null}
     </TouchableOpacity>
   );
 }
@@ -104,60 +102,162 @@ export function PriceSuggestionCard({
   currentPrice?: number;
 }) {
   return (
-    <View className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-      <View className="flex-row items-center justify-between mb-2">
-        <Text className="text-amber-900 font-bold text-base">AI Fiyat Önerisi</Text>
-        <Text className="text-xs text-amber-700">
-          {marketComparisons} ilan analiz edildi
-        </Text>
+    <View style={cardStyles.wrap}>
+      <View style={cardStyles.header}>
+        <Text style={cardStyles.title}>AI fiyat önerisi</Text>
+        <Text style={cardStyles.meta}>{marketComparisons} ilan analiz edildi</Text>
       </View>
 
-      <Text className="text-3xl font-bold text-amber-900 mb-1">
-        {suggested.toLocaleString()} {currency}
+      <Text style={cardStyles.price}>
+        {suggested.toLocaleString("tr-TR")} {currency}
       </Text>
-      <Text className="text-xs text-amber-700 mb-3">
-        Aralık: {rangeLow.toLocaleString()} – {rangeHigh.toLocaleString()} {currency}
+      <Text style={cardStyles.range}>
+        Aralık: {rangeLow.toLocaleString("tr-TR")} – {rangeHigh.toLocaleString("tr-TR")} {currency}
       </Text>
 
-      {currentPrice !== undefined && currentPrice > 0 && (
-        <View className="bg-white/60 rounded-lg p-2 mb-3">
-          <Text className="text-xs text-amber-900">
-            Sizin fiyatınız: <Text className="font-bold">{currentPrice.toLocaleString()} {currency}</Text>
+      {currentPrice !== undefined && currentPrice > 0 ? (
+        <View style={cardStyles.currentBox}>
+          <Text style={cardStyles.currentText}>
+            Sizin fiyatınız:{" "}
+            <Text style={cardStyles.currentBold}>
+              {currentPrice.toLocaleString("tr-TR")} {currency}
+            </Text>
             {currentPrice < rangeLow && " (piyasanın altında, hızlı satar)"}
             {currentPrice > rangeHigh && " (piyasanın üstünde, zor satılır)"}
             {currentPrice >= rangeLow && currentPrice <= rangeHigh && " (piyasa aralığında)"}
           </Text>
         </View>
-      )}
+      ) : null}
 
-      <Text className="text-xs text-amber-900 mb-3 leading-4">{explanation}</Text>
+      <Text style={cardStyles.explanation}>{explanation}</Text>
 
-      {factors.length > 0 && (
+      {factors.length > 0 ? (
         <View>
-          <Text className="text-xs font-bold text-amber-900 mb-1.5">Etkileyen Faktörler:</Text>
+          <Text style={cardStyles.factorsTitle}>Etkileyen faktörler</Text>
           {factors.map((f, i) => (
-            <View
-              key={i}
-              className={`flex-row items-start mb-1 ${
-                f.impact === "positive" ? "" : f.impact === "negative" ? "" : ""
-              }`}
-            >
+            <View key={i} style={cardStyles.factorRow}>
               <Text
-                className={`mr-2 text-sm ${
+                style={[
+                  cardStyles.factorMark,
                   f.impact === "positive"
-                    ? "text-green-600"
+                    ? cardStyles.positive
                     : f.impact === "negative"
-                      ? "text-red-600"
-                      : "text-slate-500"
-                }`}
+                      ? cardStyles.negative
+                      : cardStyles.neutral,
+                ]}
               >
                 {f.impact === "positive" ? "▲" : f.impact === "negative" ? "▼" : "•"}
               </Text>
-              <Text className="text-xs text-amber-900 flex-1">{f.value}</Text>
+              <Text style={cardStyles.factorText}>{f.value}</Text>
             </View>
           ))}
         </View>
-      )}
+      ) : null}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  cta: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.flame,
+    borderRadius: radius.lg,
+    padding: space.lg,
+  },
+  iconWrap: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: radius.sm,
+    padding: space.sm,
+    marginRight: space.md,
+  },
+  flex: { flex: 1 },
+  ctaTitle: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.white,
+  },
+  ctaSub: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: "rgba(255,255,255,0.9)",
+    marginTop: 2,
+  },
+});
+
+const cardStyles = StyleSheet.create({
+  wrap: {
+    backgroundColor: colors.flameSoft,
+    borderWidth: 1,
+    borderColor: BORDER_FLAME,
+    borderRadius: radius.lg,
+    padding: space.lg,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: space.sm,
+  },
+  title: {
+    fontFamily: fonts.displayMed,
+    fontSize: 15,
+    color: colors.ink,
+  },
+  meta: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.flameDeep,
+  },
+  price: {
+    fontFamily: fonts.display,
+    fontSize: 28,
+    color: colors.ink,
+    marginBottom: 4,
+  },
+  range: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkMuted,
+    marginBottom: space.md,
+  },
+  currentBox: {
+    backgroundColor: colors.white,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: BORDER_FLAME,
+    padding: space.sm,
+    marginBottom: space.md,
+  },
+  currentText: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkMuted,
+  },
+  currentBold: { fontFamily: fonts.bodySemi, color: colors.ink },
+  explanation: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkMuted,
+    marginBottom: space.md,
+    lineHeight: 16,
+  },
+  factorsTitle: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 11,
+    color: colors.ink,
+    marginBottom: 6,
+  },
+  factorRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: 4 },
+  factorMark: { marginRight: space.sm, fontSize: 12 },
+  positive: { color: colors.flame },
+  negative: { color: colors.danger },
+  neutral: { color: colors.inkFaint },
+  factorText: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkMuted,
+    lineHeight: 16,
+  },
+});

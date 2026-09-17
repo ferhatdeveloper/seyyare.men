@@ -116,9 +116,7 @@ export const useUIStore = create<UIStore>((set, get) => ({
       case "stream_message":
         get().applyStreamComplete(
           (d.messageId as string) ?? nanoid(),
-          (d.role as "assistant" | "system") ?? "assistant",
-          d.content as string,
-          d.finishReason as string,
+          (d.finishReason as string) ?? "stop",
           d.tokens as number | undefined,
         );
         break;

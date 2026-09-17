@@ -1,12 +1,10 @@
-// RecommendationStrip — recommendation agent'tan gelen benzer ilanları yatay scroll'da göster
-
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { router } from "expo-router";
 import { ChevronRight } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { Image } from "expo-image";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 import { storage } from "../../lib/clients";
+import { colors, fonts, radius, shadow, space } from "../../lib/theme";
 
 interface RecommendedVehicle {
   id: string;
@@ -25,57 +23,54 @@ interface Props {
 }
 
 export function RecommendationStrip({ title, vehicles }: Props) {
-  const { t } = useTranslation();
+  const { t: _t } = useTranslation();
 
   if (!vehicles || vehicles.length === 0) return null;
 
   return (
     <View>
-      <View className="flex-row items-center justify-between px-1 mb-2">
-        <Text className="text-base font-bold text-slate-900">
-          {title ?? "Benzer İlanlar"}
-        </Text>
-        <ChevronRight size={16} color="#94A3B8" />
+      <View style={styles.header}>
+        <Text style={styles.title}>{title ?? "Benzer İlanlar"}</Text>
+        <ChevronRight size={16} color={colors.flame} />
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         {vehicles.map((v) => (
           <TouchableOpacity
             key={v.id}
-            className="mr-3 bg-white rounded-2xl overflow-hidden border border-slate-100 w-44"
+            style={styles.card}
             onPress={() => router.push(`/vehicle/${v.id}`)}
-            activeOpacity={0.9}
+            activeOpacity={0.92}
           >
             {v.cover_url ? (
               <Image
                 source={{ uri: v.cover_url.startsWith("http") ? v.cover_url : `${storage.url}/${v.cover_url}` }}
-                style={{ width: "100%", height: 110 }}
-                contentFit="cover"
-                transition={200}
+                style={styles.cover}
+                resizeMode="cover"
               />
             ) : (
-              <View className="w-full h-[110px] bg-slate-200 items-center justify-center">
-                <Text className="text-slate-400 text-xs">—</Text>
+              <View style={styles.coverPlaceholder}>
+                <Text style={styles.placeholderText}>—</Text>
               </View>
             )}
-            <View className="p-2.5">
-              <Text className="text-xs font-bold text-slate-900" numberOfLines={1}>
+            <View style={styles.body}>
+              <Text style={styles.cardTitle} numberOfLines={1}>
                 {v.title ?? "Araç"}
               </Text>
-              {v.year && (
-                <Text className="text-[10px] text-slate-500 mt-0.5">
+              {v.year ? (
+                <Text style={styles.meta}>
                   {v.year} · {v.mileage_km?.toLocaleString() ?? "?"} km
                 </Text>
-              )}
-              <Text className="text-sm font-bold text-primary-600 mt-1">
+              ) : null}
+              <Text style={styles.price}>
                 {v.price_amount?.toLocaleString() ?? "—"}{" "}
-                <Text className="text-[10px]">{v.price_currency ?? ""}</Text>
+                <Text style={styles.currency}>{v.price_currency ?? ""}</Text>
               </Text>
-              {v.reason && (
-                <Text className="text-[10px] text-slate-500 mt-1 italic" numberOfLines={1}>
+              {v.reason ? (
+                <Text style={styles.reason} numberOfLines={1}>
                   {v.reason}
                 </Text>
-              )}
+              ) : null}
             </View>
           </TouchableOpacity>
         ))}
@@ -83,3 +78,63 @@ export function RecommendationStrip({ title, vehicles }: Props) {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 4,
+    marginBottom: space.sm,
+  },
+  title: {
+    fontFamily: fonts.displayMed,
+    fontSize: 15,
+    color: colors.ink,
+  },
+  card: {
+    marginRight: space.md,
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#FFD8B8",
+    width: 176,
+    ...shadow.soft,
+  },
+  cover: { width: "100%", height: 110 },
+  coverPlaceholder: {
+    width: "100%",
+    height: 110,
+    backgroundColor: colors.flameSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  placeholderText: { fontFamily: fonts.body, fontSize: 11, color: colors.inkFaint },
+  body: { padding: 10 },
+  cardTitle: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 11,
+    color: colors.ink,
+  },
+  meta: {
+    fontFamily: fonts.body,
+    fontSize: 10,
+    color: colors.inkFaint,
+    marginTop: 2,
+  },
+  price: {
+    fontFamily: fonts.displayMed,
+    fontSize: 14,
+    color: colors.flame,
+    marginTop: 4,
+  },
+  currency: { fontSize: 10 },
+  reason: {
+    fontFamily: fonts.body,
+    fontSize: 10,
+    color: colors.inkFaint,
+    marginTop: 4,
+    fontStyle: "italic",
+  },
+});

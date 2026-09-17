@@ -1,65 +1,117 @@
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { ChevronLeft, Heart } from "lucide-react-native";
+import { Heart } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
 
 import { VehicleCard, type VehicleListItem } from "../components/VehicleCard";
+import { Button } from "../components/ui/Button";
+import { Screen, ScreenHeader } from "../components/ui/Screen";
 import { api } from "../lib/api";
+import { colors, fonts, radius, shadow, space } from "../lib/theme";
+
+const BORDER_FLAME = "#FFD8B8";
 
 export default function FavoritesScreen() {
   const { t } = useTranslation();
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["favorites"],
     queryFn: () =>
-      api.get(
+      api.get<Array<{ vehicle?: VehicleListItem }>>(
         "/favorites?select=vehicle:vehicles(*,media:vehicle_media(*))&order=created_at.desc",
       ),
   });
 
+  const vehicles =
+    data?.flatMap((f) => (f.vehicle ? [f.vehicle] : [])) ?? [];
+
   return (
-    <SafeAreaView className="flex-1 bg-slate-50" edges={["top"]}>
-      <View className="flex-row items-center px-5 py-4 bg-white border-b border-slate-200">
-        <TouchableOpacity onPress={() => router.back()} className="mr-3">
-          <ChevronLeft size={22} color="#0F172A" />
-        </TouchableOpacity>
-        <Heart size={20} color="#EF4444" fill="#EF4444" />
-        <Text className="ml-2 text-xl font-bold text-slate-900">
-          {t("profile.favorites")}
-        </Text>
-      </View>
+    <Screen edges={["top"]}>
+      <ScreenHeader
+        title={t("profile.favorites")}
+        onBack={() => router.back()}
+        right={<Heart size={18} color={colors.flame} fill={colors.flameSoft} />}
+      />
 
       {isLoading ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#0EA5E9" />
+        <View style={styles.center}>
+          <ActivityIndicator color={colors.flame} />
         </View>
-      ) : data && data.length > 0 ? (
+      ) : vehicles.length > 0 ? (
         <FlatList
-          data={data.flatMap((f: any) => f.vehicle ?? [])}
+          data={vehicles}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <VehicleCard vehicle={item} initialFavorite />}
-          contentContainerStyle={{ padding: 16 }}
+          renderItem={({ item, index }) => (
+            <VehicleCard vehicle={item} initialFavorite index={index} />
+          )}
+          contentContainerStyle={styles.list}
+          ItemSeparatorComponent={() => <View style={styles.sep} />}
           onRefresh={refetch}
-          refreshing={isLoading}
+          refreshing={isRefetching}
+          showsVerticalScrollIndicator={false}
         />
       ) : (
-        <View className="flex-1 items-center justify-center px-8">
-          <Heart size={48} color="#CBD5E1" />
-          <Text className="text-slate-500 mt-4 text-base">Henüz favori yok</Text>
-          <Text className="text-slate-400 text-sm text-center mt-2">
-            Beğendiğiniz ilanları favorilere ekleyerek daha sonra kolayca bulabilirsiniz
+        <View style={styles.empty}>
+          <View style={styles.emptyIconWrap}>
+            <Heart size={36} color={colors.flame} strokeWidth={1.8} />
+          </View>
+          <Text style={styles.emptyTitle}>Henüz favori yok</Text>
+          <Text style={styles.emptySub}>
+            Beğendiğiniz ilanları kalp ile kaydedin; sonra buradan hızlıca dönün.
           </Text>
-          <TouchableOpacity
-            className="mt-6 bg-primary-600 rounded-xl py-3 px-6"
-            style={{ backgroundColor: "#0284C7" }}
+          <Button
+            label="İlanlara göz at"
+            variant="primary"
+            style={styles.emptyBtn}
             onPress={() => router.push("/(tabs)/search")}
-          >
-            <Text className="text-white font-semibold">İlan Ara</Text>
-          </TouchableOpacity>
+          />
         </View>
       )}
-    </SafeAreaView>
+    </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  list: {
+    paddingHorizontal: space.lg,
+    paddingTop: space.sm,
+    paddingBottom: space.section,
+  },
+  sep: { height: space.md },
+  empty: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: space.xxl,
+  },
+  emptyIconWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: colors.flameSoft,
+    borderWidth: 1,
+    borderColor: BORDER_FLAME,
+    alignItems: "center",
+    justifyContent: "center",
+    ...shadow.soft,
+  },
+  emptyTitle: {
+    fontFamily: fonts.displayMed,
+    fontSize: 20,
+    color: colors.ink,
+    marginTop: space.xl,
+    letterSpacing: -0.3,
+  },
+  emptySub: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.inkMuted,
+    textAlign: "center",
+    marginTop: space.sm,
+    lineHeight: 21,
+    maxWidth: 280,
+  },
+  emptyBtn: { marginTop: space.xxl, minWidth: 200 },
+});

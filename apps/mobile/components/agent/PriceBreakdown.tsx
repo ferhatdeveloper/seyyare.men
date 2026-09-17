@@ -1,9 +1,8 @@
-// PriceBreakdown — pricing agent'tan gelen fiyat önerisini göster
-// Agent-driven card
-
 import { Sparkles, TrendingUp, TrendingDown, Minus } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+
+import { colors, fonts, radius, space } from "../../lib/theme";
 
 export interface PriceFactor {
   factor: string;
@@ -40,77 +39,150 @@ export function PriceBreakdown({ data, currentPrice, onAccept }: Props) {
     currentPrice <= data.rangeHigh;
 
   return (
-    <View className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-      <View className="flex-row items-center justify-between mb-2">
-        <View className="flex-row items-center">
-          <Sparkles size={16} color="#F59E0B" />
-          <Text className="ml-2 text-sm font-bold text-amber-900">
-            {t("sell.aiPricingTitle")}
-          </Text>
+    <View style={styles.wrap}>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Sparkles size={16} color={colors.flame} />
+          <Text style={styles.title}>{t("sell.aiPricingTitle")}</Text>
         </View>
-        <Text className="text-xs text-amber-700">
-          {data.marketComparisons} ilan analiz edildi
-        </Text>
+        <Text style={styles.meta}>{data.marketComparisons} ilan analiz edildi</Text>
       </View>
 
-      <Text className="text-3xl font-bold text-amber-900 mb-1">
+      <Text style={styles.price}>
         {formatPrice(data.suggestedPrice)} {data.currency}
       </Text>
-      <Text className="text-xs text-amber-700 mb-3">
+      <Text style={styles.range}>
         Aralık: {formatPrice(data.rangeLow)} – {formatPrice(data.rangeHigh)} {data.currency}
       </Text>
 
-      {currentPrice !== undefined && currentPrice > 0 && (
-        <View className="bg-white/70 rounded-lg p-2 mb-3">
-          <Text className="text-xs text-amber-900">
+      {currentPrice !== undefined && currentPrice > 0 ? (
+        <View style={styles.currentBox}>
+          <Text style={styles.currentText}>
             Sizin fiyatınız:{" "}
-            <Text className="font-bold">{formatPrice(currentPrice)} {data.currency}</Text>
+            <Text style={styles.currentBold}>
+              {formatPrice(currentPrice)} {data.currency}
+            </Text>
             {currentPrice < data.rangeLow && " · Piyasanın altında, hızlı satar"}
             {currentPrice > data.rangeHigh && " · Piyasanın üstünde, zor satılır"}
             {isInRange && " · Piyasa aralığında"}
           </Text>
         </View>
-      )}
+      ) : null}
 
-      <Text className="text-xs text-amber-900 mb-3 leading-4">{data.explanation}</Text>
+      <Text style={styles.explanation}>{data.explanation}</Text>
 
-      {data.factors.length > 0 && (
-        <View className="mb-3">
-          <Text className="text-xs font-bold text-amber-900 mb-1.5">
-            Etkileyen Faktörler:
-          </Text>
+      {data.factors.length > 0 ? (
+        <View style={styles.factors}>
+          <Text style={styles.factorsTitle}>Etkileyen Faktörler:</Text>
           {data.factors.map((f, i) => (
-            <View key={i} className="flex-row items-start mb-1">
-              <Text
-                className={`mr-2 mt-0.5 ${
-                  f.impact === "positive"
-                    ? "text-green-600"
-                    : f.impact === "negative"
-                      ? "text-red-600"
-                      : "text-slate-500"
-                }`}
-              >
-                {f.impact === "positive" ? <TrendingUp size={12} color="#10B981" /> : f.impact === "negative" ? <TrendingDown size={12} color="#EF4444" /> : <Minus size={12} color="#64748B" />}
-              </Text>
-              <Text className="text-xs text-amber-900 flex-1 leading-4">{f.value}</Text>
+            <View key={i} style={styles.factorRow}>
+              <View style={styles.factorIcon}>
+                {f.impact === "positive" ? (
+                  <TrendingUp size={12} color={colors.flame} />
+                ) : f.impact === "negative" ? (
+                  <TrendingDown size={12} color={colors.danger} />
+                ) : (
+                  <Minus size={12} color={colors.inkFaint} />
+                )}
+              </View>
+              <Text style={styles.factorText}>{f.value}</Text>
             </View>
           ))}
         </View>
-      )}
+      ) : null}
 
-      <View className="flex-row items-center justify-between mt-2 pt-2 border-t border-amber-200">
-        <Text className="text-xs text-amber-700">
-          Güven: {Math.round(data.confidence * 100)}%
-        </Text>
-        {onAccept && (
-          <Text
-            className="text-xs font-bold text-amber-900"
-            onPress={onAccept}
-          >
+      <View style={styles.footer}>
+        <Text style={styles.confidence}>Güven: {Math.round(data.confidence * 100)}%</Text>
+        {onAccept ? (
+          <Text style={styles.acceptLink} onPress={onAccept}>
             Bu fiyatı kullan →
           </Text>
-        )}
+        ) : null}
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  wrap: {
+    backgroundColor: colors.flameSoft,
+    borderWidth: 1,
+    borderColor: "#FFD8B8",
+    borderRadius: radius.lg,
+    padding: space.lg,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: space.sm,
+  },
+  headerLeft: { flexDirection: "row", alignItems: "center" },
+  title: {
+    marginLeft: space.sm,
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.ink,
+  },
+  meta: { fontFamily: fonts.body, fontSize: 11, color: colors.flame },
+  price: {
+    fontFamily: fonts.display,
+    fontSize: 28,
+    color: colors.ink,
+    marginBottom: 4,
+  },
+  range: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkMuted,
+    marginBottom: space.md,
+  },
+  currentBox: {
+    backgroundColor: colors.white,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: "#FFD8B8",
+    padding: space.sm,
+    marginBottom: space.md,
+  },
+  currentText: { fontFamily: fonts.body, fontSize: 11, color: colors.inkMuted },
+  currentBold: { fontFamily: fonts.bodySemi, color: colors.ink },
+  explanation: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkMuted,
+    marginBottom: space.md,
+    lineHeight: 16,
+  },
+  factors: { marginBottom: space.md },
+  factorsTitle: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 11,
+    color: colors.ink,
+    marginBottom: 6,
+  },
+  factorRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: 4 },
+  factorIcon: { marginRight: space.sm, marginTop: 2 },
+  factorText: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkMuted,
+    lineHeight: 16,
+  },
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: space.sm,
+    paddingTop: space.sm,
+    borderTopWidth: 1,
+    borderTopColor: "#FFD8B8",
+  },
+  confidence: { fontFamily: fonts.body, fontSize: 11, color: colors.flame },
+  acceptLink: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 11,
+    color: colors.flameDeep,
+  },
+});

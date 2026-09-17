@@ -1,9 +1,10 @@
-// NegotiationChat — multi-turn fiyat pazarlığı (Faz 10)
-// Şu an skeleton + minimal UI, gerçek negotiation agent Faz 10'da tamamlanacak
+import { Handshake, MessageCircle } from "lucide-react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { Handshake } from "lucide-react-native";
-import { useTranslation } from "react-i18next";
-import { ScrollView, Text, View } from "react-native";
+import { Button } from "../ui/Button";
+import { colors, fonts, radius, shadow, space } from "../../lib/theme";
+
+const BORDER_FLAME = "#FFD8B8";
 
 export interface NegotiationOffer {
   id: string;
@@ -25,99 +26,250 @@ interface Props {
   onReject?: () => void;
 }
 
-export function NegotiationChat({ offers, status, currentOffer, agreedAmount, onAccept, onCounter, onReject }: Props) {
-  const { t } = useTranslation();
+function partyLabel(from: NegotiationOffer["from"]) {
+  if (from === "buyer") return "Siz";
+  if (from === "agent") return "AI";
+  return "Satıcı";
+}
 
+export function NegotiationChat({
+  offers,
+  status,
+  currentOffer,
+  agreedAmount,
+  onAccept,
+  onReject,
+}: Props) {
   if (status === "agreed" && agreedAmount) {
     return (
-      <View className="bg-green-50 border border-green-200 rounded-2xl p-5">
-        <View className="items-center">
-          <Handshake size={32} color="#10B981" />
-          <Text className="text-green-900 font-bold text-lg mt-2">Anlaşma Sağlandı!</Text>
-          <Text className="text-green-700 text-2xl font-bold mt-2">
-            {agreedAmount.toLocaleString()}
-          </Text>
-          <Text className="text-xs text-green-600 mt-2">Sözleşme taslağı hazırlanıyor…</Text>
+      <View style={styles.agreedWrap}>
+        <View style={styles.agreedInner}>
+          <Handshake size={32} color={colors.flame} />
+          <Text style={styles.agreedTitle}>Anlaşma sağlandı</Text>
+          <Text style={styles.agreedAmount}>{agreedAmount.toLocaleString("tr-TR")}</Text>
+          <Text style={styles.agreedSub}>Sözleşme taslağı hazırlanıyor…</Text>
         </View>
       </View>
     );
   }
 
   return (
-    <View className="bg-white rounded-2xl border border-slate-200 p-4">
-      <View className="flex-row items-center justify-between mb-3">
-        <View className="flex-row items-center">
-          <Handshake size={16} color="#0EA5E9" />
-          <Text className="ml-2 text-sm font-bold text-slate-900">
-            Fiyat Pazarlığı
-          </Text>
+    <View style={styles.wrap}>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <View style={styles.headerIcon}>
+            <Handshake size={14} color={colors.flame} />
+          </View>
+          <Text style={styles.headerTitle}>Teklif geçmişi</Text>
         </View>
-        <Text className="text-xs text-slate-500">Tur {offers.length}</Text>
+        <Text style={styles.turn}>Tur {offers.length}</Text>
       </View>
 
-      <ScrollView className="max-h-80 mb-3">
+      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
         {offers.length === 0 ? (
-          <View className="items-center py-8">
-            <Text className="text-slate-400 text-sm">Henüz teklif yok</Text>
+          <View style={styles.empty}>
+            <View style={styles.emptyIcon}>
+              <MessageCircle size={22} color={colors.flame} />
+            </View>
+            <Text style={styles.emptyTitle}>Henüz teklif yok</Text>
+            <Text style={styles.emptyText}>
+              İlk teklifinizi aşağıdan gönderin; AI karşı teklifi değerlendirir.
+            </Text>
           </View>
         ) : (
-          offers.map((offer) => (
-            <View
-              key={offer.id}
-              className={`mb-2 ${offer.from === "buyer" ? "items-end" : "items-start"}`}
-            >
+          offers.map((offer) => {
+            const isBuyer = offer.from === "buyer";
+            const isAgent = offer.from === "agent";
+            return (
               <View
-                className={`max-w-[80%] rounded-2xl px-3 py-2 ${
-                  offer.from === "buyer" ? "bg-primary-600" : "bg-slate-100"
-                }`}
-                style={offer.from === "buyer" ? { backgroundColor: "#0284C7" } : {}}
+                key={offer.id}
+                style={[styles.offerRow, isBuyer ? styles.offerRowBuyer : styles.offerRowSeller]}
               >
-                <Text
-                  className={`text-sm font-semibold ${
-                    offer.from === "buyer" ? "text-white" : "text-slate-900"
-                  }`}
+                <View
+                  style={[
+                    styles.bubble,
+                    isBuyer ? styles.bubbleBuyer : isAgent ? styles.bubbleAgent : styles.bubbleSeller,
+                  ]}
                 >
-                  {offer.amount.toLocaleString()} {offer.currency}
-                </Text>
-                {offer.message && (
                   <Text
-                    className={`text-xs mt-0.5 ${
-                      offer.from === "buyer" ? "text-white/85" : "text-slate-600"
-                    }`}
+                    style={[
+                      styles.amount,
+                      isBuyer ? styles.amountBuyer : styles.amountOther,
+                    ]}
                   >
-                    {offer.message}
+                    {offer.amount.toLocaleString("tr-TR")} {offer.currency}
                   </Text>
-                )}
+                  {offer.message ? (
+                    <Text
+                      style={[styles.msg, isBuyer ? styles.msgBuyer : styles.msgOther]}
+                    >
+                      {offer.message}
+                    </Text>
+                  ) : null}
+                </View>
+                <Text style={styles.meta}>
+                  Tur {offer.turnNumber} · {partyLabel(offer.from)}
+                </Text>
               </View>
-              <Text className="text-[10px] text-slate-400 mt-0.5">
-                Tur {offer.turnNumber} · {offer.from === "buyer" ? "Alıcı" : "Satıcı"}
-              </Text>
-            </View>
-          ))
+            );
+          })
         )}
       </ScrollView>
 
-      {currentOffer && status === "active" && (
-        <View className="border-t border-slate-200 pt-3 flex-row gap-2">
-          {onAccept && (
-            <View
-              className="flex-1 bg-green-600 rounded-xl py-3 items-center"
-              style={{ backgroundColor: "#10B981" }}
-              onTouchEnd={onAccept}
-            >
-              <Text className="text-white font-bold text-sm">Kabul Et</Text>
-            </View>
-          )}
-          {onReject && (
-            <View
-              className="flex-1 bg-red-50 border border-red-200 rounded-xl py-3 items-center"
-              onTouchEnd={onReject}
-            >
-              <Text className="text-red-600 font-bold text-sm">Reddet</Text>
-            </View>
-          )}
+      {currentOffer && status === "active" ? (
+        <View style={styles.actions}>
+          {onAccept ? (
+            <Button
+              label="Kabul et"
+              variant="primary"
+              onPress={onAccept}
+              style={styles.actionBtn}
+            />
+          ) : null}
+          {onReject ? (
+            <Button
+              label="Reddet"
+              variant="danger"
+              onPress={onReject}
+              style={styles.actionBtn}
+            />
+          ) : null}
         </View>
-      )}
+      ) : null}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  agreedWrap: {
+    backgroundColor: colors.flameSoft,
+    borderWidth: 1,
+    borderColor: BORDER_FLAME,
+    borderRadius: radius.lg,
+    padding: space.xl,
+    ...shadow.soft,
+  },
+  agreedInner: { alignItems: "center" },
+  agreedTitle: {
+    fontFamily: fonts.displayMed,
+    fontSize: 18,
+    color: colors.flameDeep,
+    marginTop: space.sm,
+  },
+  agreedAmount: {
+    fontFamily: fonts.display,
+    fontSize: 24,
+    color: colors.ink,
+    marginTop: space.sm,
+  },
+  agreedSub: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.flame,
+    marginTop: space.sm,
+  },
+  wrap: {
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: BORDER_FLAME,
+    padding: space.lg,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: space.md,
+  },
+  headerLeft: { flexDirection: "row", alignItems: "center" },
+  headerIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.sm,
+    backgroundColor: colors.flameSoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: space.sm,
+  },
+  headerTitle: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.ink,
+  },
+  turn: { fontFamily: fonts.body, fontSize: 11, color: colors.inkFaint },
+  scroll: { maxHeight: 320, marginBottom: space.md },
+  empty: {
+    alignItems: "center",
+    paddingVertical: space.xxl,
+    paddingHorizontal: space.md,
+  },
+  emptyIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.md,
+    backgroundColor: colors.flameSoft,
+    borderWidth: 1,
+    borderColor: BORDER_FLAME,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: space.md,
+  },
+  emptyTitle: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.ink,
+    marginBottom: 4,
+  },
+  emptyText: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.inkFaint,
+    textAlign: "center",
+    lineHeight: 18,
+  },
+  offerRow: { marginBottom: space.sm },
+  offerRowBuyer: { alignItems: "flex-end" },
+  offerRowSeller: { alignItems: "flex-start" },
+  bubble: {
+    maxWidth: "82%",
+    borderRadius: radius.lg,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm + 2,
+  },
+  bubbleBuyer: {
+    backgroundColor: colors.flame,
+    borderBottomRightRadius: 4,
+  },
+  bubbleSeller: {
+    backgroundColor: colors.mist,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderBottomLeftRadius: 4,
+  },
+  bubbleAgent: {
+    backgroundColor: colors.flameSoft,
+    borderWidth: 1,
+    borderColor: BORDER_FLAME,
+    borderBottomLeftRadius: 4,
+  },
+  amount: { fontFamily: fonts.bodySemi, fontSize: 15 },
+  amountBuyer: { color: colors.white },
+  amountOther: { color: colors.ink },
+  msg: { fontFamily: fonts.body, fontSize: 12, marginTop: 4, lineHeight: 16 },
+  msgBuyer: { color: "rgba(255,255,255,0.92)" },
+  msgOther: { color: colors.inkMuted },
+  meta: {
+    fontFamily: fonts.body,
+    fontSize: 10,
+    color: colors.inkFaint,
+    marginTop: 4,
+  },
+  actions: {
+    borderTopWidth: 1,
+    borderTopColor: BORDER_FLAME,
+    paddingTop: space.md,
+    flexDirection: "row",
+    gap: space.sm,
+  },
+  actionBtn: { flex: 1 },
+});

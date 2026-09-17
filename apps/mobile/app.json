@@ -2,13 +2,16 @@
   "expo": {
     "name": "Seyyare",
     "slug": "seyyare",
-    "version": "0.1.0",
+    "version": "0.2.1",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "scheme": "seyyare",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "splash": {
-      "backgroundColor": "#0F172A"
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0A0A"
     },
     "ios": {
       "supportsTablet": true,
@@ -21,6 +24,10 @@
     },
     "android": {
       "package": "men.seyyare.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0A0A0A"
+      },
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_MEDIA_IMAGES",
@@ -29,10 +36,9 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "static"
+      "output": "static",
+      "favicon": "./assets/icon.png"
     },
-    "newArchEnabled": true,
-    "userInterfaceStyle": "automatic",
     "plugins": [
       "expo-router",
       "expo-localization",

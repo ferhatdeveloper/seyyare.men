@@ -8,7 +8,8 @@
     "search": "Search",
     "sell": "Sell",
     "rentals": "Rentals",
-    "profile": "Profile"
+    "profile": "Profile",
+    "stores": "Stores"
   },
   "auth": {
     "login": "Sign In",
@@ -94,7 +95,22 @@
     "totalPrice": "Total",
     "book": "Book Now",
     "dynamicPricing": "Dynamic Pricing",
-    "priceBreakdown": "Price Breakdown"
+    "priceBreakdown": "Price Breakdown",
+    "familyOption": "Family option",
+    "familyDriverTitle": "Female driver",
+    "familyDriverDesc": "Chauffeur rental with a female driver for families. Only female members can select this.",
+    "familyDriverOn": "Female driver requested",
+    "familyDriverLocked": "Your profile gender must be female to use this option.",
+    "familyDriverLogin": "Sign in to request a female driver.",
+    "familyDriverSetGender": "Set your gender to female in your profile.",
+    "familyHint": "Family female-driver option available — female members only"
+  },
+  "gender": {
+    "label": "Gender",
+    "female": "Female",
+    "male": "Male",
+    "unspecified": "Prefer not to say",
+    "hint": "Female must be selected for family / female-driver rentals"
   },
   "vehicle": {
     "specs": "Specs",
@@ -156,5 +172,10 @@
     "validationError": "Please fill all fields correctly",
     "notFound": "Not found",
     "imageUploadFailed": "Failed to upload image"
+  },
+  "splash": {
+    "sell": "Car Sales",
+    "rent": "Rentals",
+    "taxi": "Call Taxi"
   }
 }

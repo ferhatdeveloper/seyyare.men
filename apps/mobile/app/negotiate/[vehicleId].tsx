@@ -1,23 +1,29 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { ChevronLeft, Send, Sparkles, TrendingUp } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { Sparkles, TrendingUp } from "lucide-react-native";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
   Text,
-  TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import { NegotiationChat, type NegotiationOffer } from "../../components/agent/NegotiationChat";
-import { useUIStore } from "../../lib/ui-store";
+import { Button } from "../../components/ui/Button";
+import { Field } from "../../components/ui/Field";
+import { Screen, ScreenHeader } from "../../components/ui/Screen";
+import { api } from "../../lib/api";
 import { runAgent } from "../../lib/agent-client";
+import { useUIStore } from "../../lib/ui-store";
+import { colors, fonts, radius, space } from "../../lib/theme";
+
+const BORDER_FLAME = "#FFD8B8";
 
 interface NegotiationData {
   negotiationId: string;
@@ -31,7 +37,10 @@ interface NegotiationData {
 }
 
 export default function NegotiateScreen() {
-  const { vehicleId } = useLocalSearchParams();
+  const { vehicleId: vehicleIdParam } = useLocalSearchParams();
+  const vehicleId = String(
+    Array.isArray(vehicleIdParam) ? vehicleIdParam[0] : vehicleIdParam ?? "",
+  );
   const { t } = useTranslation();
   const cards = useUIStore((s) => s.cards);
 
@@ -39,7 +48,18 @@ export default function NegotiateScreen() {
   const [buyerMax, setBuyerMax] = useState("");
   const [activeRun, setActiveRun] = useState(false);
 
-  // UI store'dan negotiation_card'ı bul
+  const vehicle = useMemo(() => {
+    return vehicleId ? api.getDemoVehicle(vehicleId) : undefined;
+  }, [vehicleId]);
+
+  const vehicleTitle =
+    vehicle?.title ??
+    (vehicle ? `${vehicle.make_name ?? ""} ${vehicle.model ?? ""}`.trim() : null);
+  const vehiclePrice =
+    vehicle?.price_amount != null
+      ? `${Number(vehicle.price_amount).toLocaleString("tr-TR")} ${vehicle.price_currency ?? "TRY"}`
+      : null;
+
   const negotiationCard = Object.values(cards).find(
     (c) => c.type === "negotiation_offer",
   ) as { data: NegotiationData } | undefined;
@@ -53,7 +73,6 @@ export default function NegotiateScreen() {
   const agentSuggestion = negotiationData?.agentSuggestion;
 
   useEffect(() => {
-    // İlk girişte negotiation'ı başlat
     if (!negotiationId) {
       setActiveRun(true);
       runAgent({
@@ -149,31 +168,48 @@ export default function NegotiateScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
-      <View className="flex-row items-center px-5 py-3 border-b border-slate-200">
-        <TouchableOpacity onPress={() => router.back()} className="mr-3">
-          <ChevronLeft size={22} color="#0F172A" />
-        </TouchableOpacity>
-        <View className="flex-1">
-          <Text className="text-lg font-bold text-slate-900">Fiyat Pazarlığı</Text>
-          <Text className="text-xs text-slate-500">
-            Tur {negotiationData?.turnNumber ?? 0} / {negotiationData?.maxTurns ?? 10}
-          </Text>
-        </View>
-      </View>
+    <Screen edges={["top"]}>
+      <ScreenHeader
+        title="Fiyat Pazarlığı"
+        subtitle={`Tur ${negotiationData?.turnNumber ?? 0} / ${negotiationData?.maxTurns ?? 10}`}
+        onBack={() => router.back()}
+      />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        className="flex-1"
+        style={styles.flex}
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
-        <ScrollView className="flex-1 px-4 py-3">
-          {activeRun && (
-            <View className="items-center py-4">
-              <ActivityIndicator size="small" color="#0EA5E9" />
-              <Text className="text-xs text-slate-500 mt-1">AI çalışıyor...</Text>
+        {(vehicleTitle || vehiclePrice) && (
+          <View style={styles.vehicleStrip}>
+            {vehicle?.cover_url ? (
+              <Image source={{ uri: vehicle.cover_url }} style={styles.vehicleThumb} />
+            ) : (
+              <View style={[styles.vehicleThumb, styles.vehicleThumbPlaceholder]} />
+            )}
+            <View style={styles.vehicleMeta}>
+              {vehicleTitle ? (
+                <Text style={styles.vehicleTitle} numberOfLines={1}>
+                  {vehicleTitle}
+                </Text>
+              ) : null}
+              {vehiclePrice ? <Text style={styles.vehiclePrice}>{vehiclePrice}</Text> : null}
+              {vehicle?.year || vehicle?.city ? (
+                <Text style={styles.vehicleSub} numberOfLines={1}>
+                  {[vehicle?.year, vehicle?.city].filter(Boolean).join(" · ")}
+                </Text>
+              ) : null}
             </View>
-          )}
+          </View>
+        )}
+
+        <ScrollView style={styles.flex} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          {activeRun ? (
+            <View style={styles.loading}>
+              <ActivityIndicator size="small" color={colors.flame} />
+              <Text style={styles.loadingText}>Teklif değerlendiriliyor…</Text>
+            </View>
+          ) : null}
 
           <NegotiationChat
             offers={offers}
@@ -184,67 +220,193 @@ export default function NegotiateScreen() {
             onReject={rejectOffer}
           />
 
-          {agentSuggestion && status === "active" && (
-            <View className="mt-4 bg-primary-50 border border-primary-200 rounded-2xl p-4">
-              <View className="flex-row items-center mb-2">
-                <Sparkles size={16} color="#0EA5E9" />
-                <Text className="ml-2 text-sm font-bold text-primary-900">
-                  AI Önerisi
-                </Text>
+          {agentSuggestion && status === "active" ? (
+            <View style={styles.suggestion}>
+              <View style={styles.suggestionHeader}>
+                <Sparkles size={16} color={colors.flame} />
+                <Text style={styles.suggestionTitle}>AI önerisi</Text>
               </View>
-              <Text className="text-2xl font-bold text-primary-700">
-                {agentSuggestion.amount.toLocaleString()} USD
+              <Text style={styles.suggestionAmount}>
+                {agentSuggestion.amount.toLocaleString("tr-TR")} USD
               </Text>
-              <Text className="text-xs text-primary-700 mt-1 leading-4">
-                {agentSuggestion.reasoning}
-              </Text>
-              <TouchableOpacity
-                className="mt-3 bg-primary-600 rounded-xl py-2 px-4 self-start flex-row items-center"
-                style={{ backgroundColor: "#0284C7" }}
+              <Text style={styles.suggestionReason}>{agentSuggestion.reasoning}</Text>
+              <Button
+                label="Bu teklifi kullan"
+                variant="primary"
                 onPress={() => setOfferAmount(String(agentSuggestion.amount))}
-              >
-                <TrendingUp size={12} color="#FFFFFF" />
-                <Text className="ml-1.5 text-white font-semibold text-xs">
-                  Bu teklifi kullan
-                </Text>
-              </TouchableOpacity>
+                style={styles.useSuggestionBtn}
+                textStyle={styles.useSuggestionText}
+              />
             </View>
-          )}
+          ) : null}
         </ScrollView>
 
-        {status === "active" && (
-          <View className="px-4 py-3 border-t border-slate-200">
-            <Text className="text-xs font-semibold text-slate-700 mb-1.5">
-              Senin teklifin (USD)
-            </Text>
-            <View className="flex-row gap-2 mb-2">
-              <TextInput
-                className="flex-1 bg-slate-100 rounded-xl px-4 py-3 text-base text-slate-900"
+        {status === "active" ? (
+          <View style={styles.composer}>
+            <Text style={styles.offerLabel}>Teklifiniz</Text>
+            <View style={styles.offerRow}>
+              <Field
                 value={offerAmount}
                 onChangeText={setOfferAmount}
                 keyboardType="numeric"
-                placeholder="25000"
+                placeholder="Örn. 25000"
+                containerStyle={styles.offerFieldInline}
+                style={styles.offerInput}
               />
-              <TouchableOpacity
-                className="bg-primary-600 rounded-xl w-12 items-center justify-center"
-                style={{ backgroundColor: "#0284C7", opacity: activeRun ? 0.5 : 1 }}
+              <Button
+                label="Gönder"
+                variant="primary"
                 onPress={sendOffer}
+                loading={activeRun}
                 disabled={activeRun}
-              >
-                <Send size={18} color="#FFFFFF" />
-              </TouchableOpacity>
+                style={styles.sendBtn}
+              />
             </View>
-            <Text className="text-xs text-slate-500 mb-1">Max teklifin (PRIVATE, satıcı görmez)</Text>
-            <TextInput
-              className="bg-slate-50 rounded-xl px-4 py-2 text-sm text-slate-700"
+            <Field
+              label="Üst sınırınız (yalnızca siz görürsünüz)"
               value={buyerMax}
               onChangeText={setBuyerMax}
               keyboardType="numeric"
-              placeholder="30000"
+              placeholder="Örn. 30000"
+              containerStyle={styles.maxField}
             />
+            <View style={styles.composerHintRow}>
+              <TrendingUp size={12} color={colors.flame} />
+              <Text style={styles.composerHint}>
+                Karşı teklifler AI destekli pazarlıkla yanıtlanır
+              </Text>
+            </View>
           </View>
-        )}
+        ) : null}
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  vehicleStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: space.lg,
+    marginBottom: space.sm,
+    padding: space.md,
+    backgroundColor: colors.flameSoft,
+    borderWidth: 1,
+    borderColor: BORDER_FLAME,
+    borderRadius: radius.lg,
+    gap: space.md,
+  },
+  vehicleThumb: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.sm,
+    backgroundColor: colors.mist,
+  },
+  vehicleThumbPlaceholder: {
+    borderWidth: 1,
+    borderColor: BORDER_FLAME,
+  },
+  vehicleMeta: { flex: 1, minWidth: 0 },
+  vehicleTitle: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.ink,
+  },
+  vehiclePrice: {
+    fontFamily: fonts.displayMed,
+    fontSize: 16,
+    color: colors.flameDeep,
+    marginTop: 2,
+  },
+  vehicleSub: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkFaint,
+    marginTop: 2,
+  },
+  scroll: { paddingHorizontal: space.lg, paddingVertical: space.md, paddingBottom: space.xl },
+  loading: { alignItems: "center", paddingVertical: space.lg },
+  loadingText: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.inkFaint,
+    marginTop: space.xs,
+  },
+  suggestion: {
+    marginTop: space.lg,
+    padding: space.lg,
+    backgroundColor: colors.flameSoft,
+    borderWidth: 1,
+    borderColor: BORDER_FLAME,
+    borderRadius: radius.lg,
+  },
+  suggestionHeader: { flexDirection: "row", alignItems: "center", marginBottom: space.sm },
+  suggestionTitle: {
+    marginLeft: space.sm,
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.flameDeep,
+  },
+  suggestionAmount: {
+    fontFamily: fonts.display,
+    fontSize: 24,
+    color: colors.flameDeep,
+  },
+  suggestionReason: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.inkMuted,
+    marginTop: space.xs,
+    lineHeight: 18,
+  },
+  useSuggestionBtn: {
+    alignSelf: "flex-start",
+    marginTop: space.md,
+    minHeight: 40,
+    paddingVertical: 10,
+    paddingHorizontal: space.md,
+  },
+  useSuggestionText: { fontSize: 13 },
+  composer: {
+    paddingHorizontal: space.lg,
+    paddingTop: space.md,
+    paddingBottom: space.lg,
+    borderTopWidth: 1,
+    borderTopColor: BORDER_FLAME,
+    backgroundColor: colors.white,
+  },
+  offerLabel: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 12,
+    color: colors.inkMuted,
+    marginBottom: 6,
+  },
+  offerRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: space.sm,
+    marginBottom: space.sm,
+  },
+  offerFieldInline: { flex: 1, marginBottom: 0 },
+  offerInput: {
+    minHeight: 48,
+    borderColor: BORDER_FLAME,
+  },
+  sendBtn: {
+    minWidth: 96,
+    paddingHorizontal: space.lg,
+  },
+  maxField: { marginBottom: space.sm },
+  composerHintRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  composerHint: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkFaint,
+    flex: 1,
+  },
+});
