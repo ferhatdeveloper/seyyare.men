@@ -171,7 +171,7 @@ ${text}
     await cache.set(cacheKey, translated, 60 * 60 * 24 * 7); // 7 gün
     return translated;
   } catch (err) {
-    app.log.error({ err: (err as Error).message }, "translate failed");
+    console.error("translate failed", (err as Error).message);
     return text; // Fallback: orijinal metni döndür
   }
 }

@@ -92,6 +92,16 @@ CREATE TABLE IF NOT EXISTS public.hil_approvals (
 CREATE INDEX IF NOT EXISTS idx_hil_approvals_user_status ON public.hil_approvals(user_id, status);
 
 -- RLS: agent_threads sadece sahibi tarafından erişilebilir
+-- Helpers may also be defined in policies/rls.sql (idempotent).
+CREATE OR REPLACE FUNCTION public.current_user_id() RETURNS uuid LANGUAGE sql STABLE AS $$
+  SELECT nullif(current_setting('request.jwt.user_id', true), '')::uuid;
+$$;
+CREATE OR REPLACE FUNCTION public.current_jwt_role() RETURNS text LANGUAGE sql STABLE AS $$
+  SELECT coalesce(nullif(current_setting('request.jwt.role', true), ''), 'anon');
+$$;
+GRANT EXECUTE ON FUNCTION public.current_user_id() TO anon, authenticated, dealer, admin;
+GRANT EXECUTE ON FUNCTION public.current_jwt_role() TO anon, authenticated, dealer, admin;
+
 ALTER TABLE public.agent_threads ENABLE ROW LEVEL SECURITY;
 CREATE POLICY agent_threads_owner ON public.agent_threads
   FOR ALL USING (user_id = public.current_user_id() OR public.current_jwt_role() = 'admin');

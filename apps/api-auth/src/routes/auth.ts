@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { login, logout, me, refresh, register } from "../lib/tokens.js";
+import { login, logout, me, refresh, register, updateProfile } from "../lib/tokens.js";
 
 const registerSchema = z.object({
   email: z.string().email().optional(),
@@ -18,6 +18,10 @@ const loginSchema = z.object({
 
 const refreshSchema = z.object({
   refreshToken: z.string().min(1),
+});
+
+const updateMeSchema = z.object({
+  gender: z.enum(["female", "male", "unspecified"]).nullable().optional(),
 });
 
 function getBearer(req: FastifyRequest): string | null {
@@ -99,5 +103,25 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const user = await me(userId);
     if (!user) return reply.code(404).send({ error: "not_found" });
     return reply.send(user);
+  });
+
+  app.patch("/auth/me", async (req: FastifyRequest, reply: FastifyReply) => {
+    const userId = getUserIdFromJwt(req);
+    if (!userId) return reply.code(401).send({ error: "unauthorized" });
+    const parsed = updateMeSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "validation_error", details: parsed.error.flatten() });
+    }
+    if (parsed.data.gender === undefined) {
+      return reply.code(400).send({ error: "nothing_to_update" });
+    }
+    try {
+      const user = await updateProfile(userId, { gender: parsed.data.gender });
+      if (!user) return reply.code(404).send({ error: "not_found" });
+      return reply.send(user);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "update_failed";
+      return reply.code(400).send({ error: msg });
+    }
   });
 }

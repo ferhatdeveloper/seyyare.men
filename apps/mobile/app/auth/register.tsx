@@ -1,4 +1,4 @@
-import { LinearGradient } from "expo-linear-gradient";
+import { SoftGradient as LinearGradient } from "../../components/SoftGradient";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
@@ -20,7 +20,15 @@ import { Button } from "../../components/ui/Button";
 import { Field } from "../../components/ui/Field";
 import { api } from "../../lib/api";
 import { auth, type UserGender } from "../../lib/auth";
+import { useDriverStore } from "../../lib/driver-store";
+import { useModeStore } from "../../lib/mode-store";
 import { colors, fonts, radius, shadow, space } from "../../lib/theme";
+
+type RegisterIntent = "user" | "dealer" | "driver";
+
+/** Soft-live Erbil center — used when registering as taxi driver. */
+const DRIVER_BOOT_LAT = 36.1911;
+const DRIVER_BOOT_LNG = 44.0094;
 
 export default function RegisterScreen() {
   const { t } = useTranslation();
@@ -28,9 +36,11 @@ export default function RegisterScreen() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [role, setRole] = useState<"user" | "dealer">("user");
+  const [intent, setIntent] = useState<RegisterIntent>("user");
   const [gender, setGender] = useState<UserGender | null>(null);
   const [loading, setLoading] = useState(false);
+  const setDriver = useDriverStore((s) => s.setDriver);
+  const chooseMode = useModeStore((s) => s.choose);
 
   const onRegister = async () => {
     if (!email && !phone) {
@@ -43,12 +53,13 @@ export default function RegisterScreen() {
     }
     setLoading(true);
     try {
+      const authRole = intent === "dealer" ? "dealer" : "user";
       const res = await api.register({
         email: email || undefined,
         phone: phone || undefined,
         password,
         displayName: displayName || undefined,
-        role,
+        role: authRole,
       });
       if (res.error) {
         Alert.alert(res.error);
@@ -58,7 +69,32 @@ export default function RegisterScreen() {
         ...res,
         user: { ...res.user, gender: gender ?? undefined },
       });
-      router.replace("/(tabs)");
+      if (gender) {
+        await auth.updateUser({ gender });
+      }
+
+      const asDriver = intent === "driver";
+      await setDriver(asDriver);
+      if (asDriver) {
+        await chooseMode("ride");
+      }
+
+      if (asDriver && res.user?.id) {
+        try {
+          await api.rpc("upsert_driver_location", {
+            p_user_id: res.user.id,
+            lat: DRIVER_BOOT_LAT,
+            lng: DRIVER_BOOT_LNG,
+            p_online: true,
+            p_gender:
+              gender === "female" || gender === "male" ? gender : "male",
+          });
+        } catch {
+          /* panel still works offline/demo */
+        }
+      }
+
+      router.replace(asDriver ? "/driver" : "/(tabs)");
     } catch {
       Alert.alert(t("errors.serverError"));
     } finally {
@@ -96,22 +132,26 @@ export default function RegisterScreen() {
             <Text style={styles.subtitle}>{t("auth.registerSubtitle")}</Text>
 
             <View style={styles.roleRow}>
-              <TouchableOpacity
-                style={[styles.roleBtn, role === "user" && styles.roleBtnActive]}
-                onPress={() => setRole("user")}
-              >
-                <Text style={[styles.roleText, role === "user" && styles.roleTextActive]}>
-                  Bireysel
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.roleBtn, role === "dealer" && styles.roleBtnActive]}
-                onPress={() => setRole("dealer")}
-              >
-                <Text style={[styles.roleText, role === "dealer" && styles.roleTextActive]}>
-                  Galeri / Bayi
-                </Text>
-              </TouchableOpacity>
+              {(
+                [
+                  ["user", t("auth.roleUser")],
+                  ["dealer", t("auth.roleDealer")],
+                  ["driver", t("auth.roleDriver")],
+                ] as Array<[RegisterIntent, string]>
+              ).map(([value, label]) => (
+                <TouchableOpacity
+                  key={value}
+                  style={[styles.roleBtn, intent === value && styles.roleBtnActive]}
+                  onPress={() => setIntent(value)}
+                >
+                  <Text
+                    style={[styles.roleText, intent === value && styles.roleTextActive]}
+                    numberOfLines={2}
+                  >
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
 
             <Text style={styles.genderLabel}>{t("gender.label")}</Text>
@@ -238,20 +278,25 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     padding: 4,
     marginBottom: space.xl,
+    gap: 2,
   },
   roleBtn: {
     flex: 1,
     paddingVertical: 10,
+    paddingHorizontal: 4,
     borderRadius: radius.sm,
     alignItems: "center",
+    justifyContent: "center",
+    minHeight: 44,
   },
   roleBtnActive: {
     backgroundColor: colors.flame,
   },
   roleText: {
     fontFamily: fonts.bodySemi,
-    fontSize: 13,
+    fontSize: 11,
     color: colors.inkFaint,
+    textAlign: "center",
   },
   roleTextActive: { color: colors.white },
   genderLabel: {

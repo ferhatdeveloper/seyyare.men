@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Home, Search, Plus, Store, User } from "lucide-react-native";
+import { Home, LayoutGrid, Plus, Search, User } from "lucide-react-native";
 import { Platform, StyleSheet, View } from "react-native";
 
 import { colors, fonts, shadow } from "../../lib/theme";
@@ -70,11 +70,13 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="stores"
+        name="services"
         options={{
-          title: t("tabs.stores"),
+          title: t("tabs.services"),
           headerShown: false,
-          tabBarIcon: ({ color, size }) => <Store size={size} color={color} strokeWidth={2} />,
+          tabBarIcon: ({ color, size }) => (
+            <LayoutGrid size={size} color={color} strokeWidth={2} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -83,6 +85,14 @@ export default function TabsLayout() {
           title: t("tabs.profile"),
           headerShown: false,
           tabBarIcon: ({ color, size }) => <User size={size} color={color} strokeWidth={2} />,
+        }}
+      />
+      <Tabs.Screen
+        name="stores"
+        options={{
+          title: t("tabs.stores"),
+          headerShown: false,
+          href: null,
         }}
       />
       <Tabs.Screen

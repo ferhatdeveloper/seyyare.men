@@ -223,10 +223,27 @@ export async function logout(refreshToken: string): Promise<void> {
   );
 }
 
+export async function updateProfile(
+  userId: string,
+  patch: { gender?: "female" | "male" | "unspecified" | null },
+) {
+  if (patch.gender !== undefined) {
+    await db.query(
+      `INSERT INTO public.user_profiles (user_id, gender, updated_at)
+       VALUES ($1, $2, now())
+       ON CONFLICT (user_id) DO UPDATE SET
+         gender = EXCLUDED.gender,
+         updated_at = now()`,
+      [userId, patch.gender],
+    );
+  }
+  return me(userId);
+}
+
 export async function me(userId: string) {
   const res = await db.query(
     `SELECT u.id, u.email, u.phone, u.role, u.locale, u.email_verified_at, u.phone_verified_at,
-            u.created_at, p.display_name, p.avatar_url, p.country_code, p.city, p.verified
+            u.created_at, p.display_name, p.avatar_url, p.country_code, p.city, p.verified, p.gender
      FROM public.users u
      LEFT JOIN public.user_profiles p ON p.user_id = u.id
      WHERE u.id = $1`,

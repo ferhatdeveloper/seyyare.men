@@ -8,8 +8,14 @@ import { adminRoutes } from "./routes/admin.js";
 import { agentToolsRoutes } from "./routes/agent-tools.js";
 import { centralMonitoringRoutes } from "./routes/central-monitoring.js";
 import { abTestingRoutes } from "./routes/ab-testing.js";
+import { driverRoutes } from "./routes/drivers.js";
+import { rideRoutes } from "./routes/rides.js";
+import { webhookRoutes } from "./routes/webhooks.js";
+import { meetRoutes } from "./routes/meet.js";
 import { db } from "./lib/db.js";
 import { redis } from "./lib/redis.js";
+import { closeQueues } from "./queue/queues.js";
+import { startWorkers, stopWorkers, shouldStartWorkers } from "./queue/workers.js";
 
 const PORT = Number(process.env.PORT ?? 4050);
 const NODE_ENV = process.env.NODE_ENV ?? "development";
@@ -36,6 +42,7 @@ app.get("/health", async () => ({
   openrouter: !!process.env.OPENROUTER_API_KEY,
   db: "connected",
   redis: "connected",
+  queueWorkers: shouldStartWorkers(),
   ts: new Date().toISOString(),
 }));
 
@@ -45,10 +52,16 @@ await app.register(adminRoutes, { prefix: "/" });
 await app.register(agentToolsRoutes, { prefix: "/" });
 await app.register(centralMonitoringRoutes, { prefix: "/" });
 await app.register(abTestingRoutes, { prefix: "/" });
+await app.register(driverRoutes, { prefix: "/" });
+await app.register(rideRoutes, { prefix: "/" });
+await app.register(webhookRoutes, { prefix: "/" });
+await app.register(meetRoutes, { prefix: "/" });
 
 try {
   await db.query("SELECT 1");
   await redis.client.ping();
+
+  await startWorkers();
 
   await app.listen({ port: PORT, host: "0.0.0.0" });
   app.log.info(`Orchestrator (Central Agent) listening on port ${PORT}`);
@@ -60,6 +73,8 @@ try {
 const shutdown = async () => {
   app.log.info("Shutting down orchestrator...");
   await app.close();
+  await stopWorkers();
+  await closeQueues();
   await db.end();
   await redis.client.quit();
   process.exit(0);

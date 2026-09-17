@@ -6,6 +6,7 @@ import { colors, fonts, radius, shadow, space } from "../lib/theme";
 export type BrandItem = {
   id: number;
   name: string;
+  name_en?: string | null;
   logo_url?: string | null;
 };
 
@@ -40,7 +41,7 @@ export function BrandStrip({
               onPress={() => onSelect(b)}
               activeOpacity={0.85}
             >
-              <BrandLogo name={b.name} logoUrl={b.logo_url} size={44} />
+              <BrandLogo name={b.name} nameEn={b.name_en} logoUrl={b.logo_url} size={44} />
               <Text style={[styles.name, selected && styles.nameSelected]} numberOfLines={1}>
                 {shortName(b.name)}
               </Text>
@@ -66,7 +67,7 @@ export function BrandStrip({
             onPress={() => onSelect(b)}
             activeOpacity={0.85}
           >
-            <BrandLogo name={b.name} logoUrl={b.logo_url} size={48} />
+            <BrandLogo name={b.name} nameEn={b.name_en} logoUrl={b.logo_url} size={48} />
             <Text style={[styles.name, selected && styles.nameSelected]} numberOfLines={1}>
               {shortName(b.name)}
             </Text>

@@ -9,7 +9,8 @@
     "sell": "فروش",
     "rentals": "اجاره",
     "profile": "پروفایل",
-    "stores": "فروشگاه‌ها"
+    "stores": "فروشگاه‌ها",
+    "services": "خدمات"
   },
   "auth": {
     "login": "ورود",
@@ -30,7 +31,15 @@
     "language": "زبان",
     "selectLanguage": "انتخاب زبان",
     "continueAsGuest": "ادامه به عنوان مهمان",
-    "termsNotice": "با ادامه، شرایط استفاده و سیاست حفظ حریم خصوصی را می‌پذیرید"
+    "termsNotice": "با ادامه، شرایط استفاده و سیاست حفظ حریم خصوصی را می‌پذیرید",
+    "demoAccounts": "حساب‌های دمو",
+    "demoUser": "کاربر",
+    "demoDealer": "نمایندگی",
+    "demoAdmin": "ادمین",
+    "demoDriver": "راننده / تاکسی",
+    "roleUser": "فردی",
+    "roleDealer": "گالری / نمایندگی",
+    "roleDriver": "راننده / تاکسی"
   },
   "home": {
     "greeting": "سلام",
@@ -40,7 +49,14 @@
     "featuredRentals": "اجاره‌های ویژه",
     "aiAssistant": "دستیار هوش مصنوعی",
     "aiAssistantPrompt": "یک ماشین پیشنهاد بده",
-    "seeAll": "مشاهده همه"
+    "seeAll": "مشاهده همه",
+    "auctions": "حراج",
+    "budgetUnder10M": "Under 10M IQD",
+    "budgetUnder25M": "Under 25M IQD",
+    "budgetUnder50M": "Under 50M IQD",
+    "budgetUnder100M": "Under 100M IQD",
+    "goodDeal": "Good Deal",
+    "responsiveDealer": "Responsive"
   },
   "search": {
     "title": "جستجوی خودرو",
@@ -61,7 +77,36 @@
     "apply": "اعمال",
     "reset": "بازنشانی",
     "noResults": "نتیجه‌ای یافت نشد",
-    "resultsCount": "{{count}} نتیجه"
+    "resultsCount": "{{count}} نتیجه",
+    "quickMake": "برند",
+    "priceUnder": "زیر ۱۰M",
+    "priceMid": "۱۰–۲۵M",
+    "priceOver": "۲۵M+",
+    "yearFrom2020": "۲۰۲۰+",
+    "yearFrom2015": "۲۰۱۵+",
+    "yearOlder": "قدیمی‌تر",
+    "sortNewest": "جدیدترین",
+    "sortPriceLow": "ارزان‌ترین",
+    "brands": "Brands",
+    "trim": "Trim",
+    "fromYear": "From Year",
+    "toYear": "To Year",
+    "minPrice": "Min Price",
+    "maxPrice": "Max Price",
+    "minMileage": "Min Mileage",
+    "maxMileage": "Max Mileage",
+    "plateCity": "Plate City",
+    "plateType": "Plate Type",
+    "platePrivate": "Private",
+    "plateCommercial": "Commercial",
+    "plateOfficial": "Official",
+    "condition": "Condition",
+    "conditionUsed": "Used",
+    "conditionNew": "New",
+    "showCars": "Show {{count}} Cars",
+    "savedTitle": "Saved",
+    "savedBody": "Search added to saved searches.",
+    "saveFailed": "Could not save search."
   },
   "sell": {
     "title": "فروش خودرو",
@@ -103,7 +148,9 @@
     "familyDriverLocked": "برای این گزینه جنسیت پروفایل باید زن باشد.",
     "familyDriverLogin": "برای درخواست راننده زن وارد شوید.",
     "familyDriverSetGender": "در پروفایل جنسیت را زن تنظیم کنید.",
-    "familyHint": "گزینه راننده زن برای خانواده — فقط اعضای زن"
+    "familyHint": "گزینه راننده زن برای خانواده — فقط اعضای زن",
+    "withDriver": "With driver",
+    "withDriverFee": "+{{fee}}/day"
   },
   "vehicle": {
     "specs": "مشخصات",
@@ -118,7 +165,10 @@
     "similarListings": "آگهی‌های مشابه",
     "aiAnalysis": "تحلیل هوش مصنوعی",
     "conditionScore": "امتیاز وضعیت",
-    "damageReport": "گزارش آسیب"
+    "damageReport": "گزارش آسیب",
+    "verifiedBadge": "Verified",
+    "responsiveBadge": "Responsive",
+    "goodDealBadge": "Good Deal"
   },
   "profile": {
     "title": "پروفایل",
@@ -131,7 +181,16 @@
     "help": "راهنما",
     "about": "درباره",
     "version": "نسخه",
-    "deleteAccount": "حذف حساب"
+    "deleteAccount": "حذف حساب",
+    "sectionAccount": "حساب من",
+    "sectionServices": "خدمات",
+    "sectionBusiness": "کسب‌وکار",
+    "sectionMore": "بیشتر",
+    "apiAddress": "آدرس موقت API",
+    "apiAddressHint": "gateway تونل / soft-live. ویرایش کنید و ذخیره کنید.",
+    "apiAddressPlaceholder": "https://….trycloudflare.com",
+    "apiAddressReset": "بازگشت به پیش‌فرض",
+    "apiAddressSaved": "آدرس API به‌روز شد"
   },
   "common": {
     "loading": "در حال بارگذاری...",
@@ -156,7 +215,8 @@
     "less": "کمتر",
     "km": "کیلومتر",
     "year": "سال",
-    "currency": "﷼"
+    "currency": "﷼",
+    "select": "Select"
   },
   "errors": {
     "network": "اتصال اینترنت خود را بررسی کنید",
@@ -171,11 +231,162 @@
     "rent": "اجاره",
     "taxi": "درخواست تاکسی"
   },
+  "hub": {
+    "buy": "خرید خودرو",
+    "sell": "فروش",
+    "rent": "اجاره",
+    "taxi": "تاکسی",
+    "ride": "سفر",
+    "moreServices": "خدمات بیشتر",
+    "guide": "راهنما",
+    "airport": "فرودگاه",
+    "wash": "کارواش",
+    "pay": "کیف پول / پرداخت",
+    "sharedRide": "بین‌شهری"
+  },
+  "modeSelect": {
+    "title": "چه کاری می‌خواهی؟",
+    "subtitle": "اول خرید یا اجاره — بعد فروش، سفر و خدمات بیشتر.",
+    "tagline": "بازار خودروی عراق",
+    "moreServices": "سایر خدمات",
+    "primaryServices": "خدمات اصلی",
+    "preferences": "ترجیحات",
+    "language": "زبان",
+    "city": "شهر",
+    "hintRide": "تاکسی، اشتراکی یا ترانسفر فرودگاه",
+    "hintBuy": "بگرد، مقایسه کن، با فروشنده حرف بزن",
+    "hintRent": "روزانه · هفتگی · ماهانه · تحویل فرودگاه",
+    "hintSell": "آگهی بگذار، با کیف پول منتشر کن",
+    "hintAuctions": "پیشنهاد زنده بده",
+    "hintWallet": "موجودی و پرداخت",
+    "hintWash": "شستشو در محل",
+    "hintShared": "صندلی بین‌شهری",
+    "hintGuide": "راهنمای خرید",
+    "browseListings": "اول آگهی‌ها را ببین",
+    "popular": "محبوب",
+    "changeMode": "تغییر انتخاب سرویس"
+  },
+  "ride": {
+    "modes": {
+      "city": "تاکسی",
+      "shared": "اشتراکی",
+      "airport": "فرودگاه"
+    },
+    "badge": {
+      "city": "دمو",
+      "shared": "اشتراکی · دمو",
+      "airport": "ترانسفر فرودگاه · دمو"
+    },
+    "lead": {
+      "city": "از کجا به کجا؟ کرایه و زمان فوری.",
+      "shared": "مسیر را شریک شوید، کمتر بپردازید.",
+      "airport": "ترانسفر فرودگاه ↔ شهر."
+    },
+    "from": "مبدأ",
+    "to": "مقصد",
+    "fromPlaceholder": "نقطه سوار شدن",
+    "toPlaceholder": "مقصد",
+    "vehicleType": "نوع خودرو",
+    "payment": "پرداخت",
+    "allMethods": "همه روش‌ها (Qi Card, Apple Pay…)",
+    "eta": "زمان تقریبی",
+    "fare": "برآورد کرایه",
+    "minutes": "دقیقه",
+    "ctaCity": "درخواست تاکسی",
+    "ctaShared": "رزرو صندلی",
+    "ctaAirport": "درخواست ترانسفر",
+    "demoNote": "جریان دمو — سفر واقعی ارسال نمی‌شود.",
+    "missingTitle": "اطلاعات ناقص",
+    "missingBody": "لطفاً مقصد را وارد کنید.",
+    "demoCreated": "سفر دمو ایجاد شد",
+    "matchedTitle": "راننده پیدا شد",
+    "matchedDriver": "راننده هماهنگ‌شده",
+    "matchedEta": "ETA ~{{min}} دقیقه",
+    "matching": "در حال یافتن راننده…",
+    "goHome": "خانه"
+  },
+  "guide": {
+    "subtitle": "راهنمای خودرو و اخبار محلی",
+    "demoNote": "محتوای دمو — CMS بعداً."
+  },
+  "wallet": {
+    "subtitle": "موجودی و روش‌های پرداخت",
+    "balance": "موجودی کیف پول",
+    "demoBalance": "موجودی دمو · پرداخت واقعی نیست",
+    "topUp": "شارژ موجودی",
+    "payMethod": "روش پرداخت",
+    "selected": "روش انتخاب‌شده",
+    "lastTopUp": "آخرین شارژ",
+    "useInTaxi": "پرداخت در تاکسی",
+    "iraqHint": "کیف‌پول و شبکه‌های کارت رایج در عراق / اقلیم کردستان",
+    "globalHint": "کارت و کیف‌پول بین‌المللی (Stripe)",
+    "pspNote": "UI دمو — FastPay، FIB، ZainCash، Stripe بعداً.",
+    "groups": {
+      "local": "محلی / Seyyare",
+      "iraq": "پرداخت عراق",
+      "global": "جهانی"
+    },
+    "methods": {
+      "cash": "نقد",
+      "card": "کارت",
+      "wallet": "کیف پول Seyyare",
+      "fastpay": "FastPay",
+      "fib": "FIB",
+      "zaincash": "ZainCash",
+      "qiCard": "Qi Card",
+      "nasswallet": "NassWallet",
+      "stripe": "Stripe (Visa/MC)",
+      "applePay": "Apple Pay",
+      "googlePay": "Google Pay"
+    }
+  },
   "gender": {
     "label": "جنسیت",
     "female": "زن",
     "male": "مرد",
     "unspecified": "ترجیح می‌دهم نگویم",
     "hint": "برای اجاره خانواده / راننده زن باید زن انتخاب شود"
+  },
+  "currency": {
+    "label": "واحد پول",
+    "iqd": "دینار عراق (IQD)",
+    "usd": "دلار آمریکا (USD)",
+    "hatwanSource": "نرخ روزانه: هاتوان اکسچنج (اربیل)",
+    "hatwanMid": "1 USD ≈ {{rate}} IQD",
+    "refresh": "بروزرسانی نرخ",
+    "buy": "خرید",
+    "sale": "فروش"
+  },
+  "auction": {
+    "title": "حراج",
+    "subtitle": "حراج‌های زنده و آینده خودرو",
+    "empty": "حراجی برای این فیلتر نیست",
+    "bids": "پیشنهاد",
+    "currentBid": "پیشنهاد فعلی",
+    "startPrice": "شروع",
+    "reserve": "ذخیره",
+    "noReserve": "بدون ذخیره",
+    "reserveMet": "ذخیره عبور شد",
+    "reserveNotMet": "ذخیره هنوز عبور نشده",
+    "endsIn": "مانده تا پایان",
+    "startsIn": "مانده تا شروع",
+    "ended": "پایان یافت",
+    "notStarted": "حراج هنوز شروع نشده",
+    "bidHistory": "تاریخچه پیشنهادها",
+    "noBidsYet": "هنوز پیشنهادی نیست",
+    "viewListing": "مشاهده آگهی",
+    "nextBid": "پیشنهاد بعدی",
+    "minIncrement": "حداقل افزایش",
+    "placeBid": "پیشنهاد بده",
+    "bidPlaced": "پیشنهاد ثبت شد",
+    "bidPlacedBody": "پیشنهاد {{amount}} شما ثبت شد (دمو).",
+    "liveBanner": "حراج زنده",
+    "liveUpdating": "زنده",
+    "upcomingBanner": "حراج آینده",
+    "status": {
+      "live": "زنده",
+      "upcoming": "به زودی",
+      "ended": "پایان"
+    }
   }
 }

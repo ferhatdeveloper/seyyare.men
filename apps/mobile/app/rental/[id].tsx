@@ -9,6 +9,8 @@ import {
   Shield,
   Clock,
   Users,
+  Plane,
+  Phone,
 } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -28,7 +30,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Button } from "../../components/ui/Button";
 import { api } from "../../lib/api";
 import { auth, type StoredUser } from "../../lib/auth";
-import { storage } from "../../lib/clients";
+import { aiClient, storage } from "../../lib/clients";
+import { useCurrencyStore } from "../../lib/currency-store";
+import { chauffeurDailyFee } from "../../lib/marketplace-heuristics";
 import { colors, fonts, radius, shadow, space } from "../../lib/theme";
 
 const GALLERY_H = 300;
@@ -45,6 +49,8 @@ interface Rental {
   max_days: number;
   insurance_included: boolean;
   delivery_available: boolean;
+  airport_delivery?: boolean;
+  airport_delivery_fee?: number;
   instant_book: boolean;
   age_requirement: number;
   country_code: string | null;
@@ -74,10 +80,14 @@ interface PriceQuote {
 }
 
 export default function rentalDetailScreen() {
-  const params = useLocalSearchParams<{ id: string | string[] }>();
+  const params = useLocalSearchParams<{ id: string | string[]; withDriver?: string | string[] }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const withDriverParam = Array.isArray(params.withDriver)
+    ? params.withDriver[0]
+    : params.withDriver;
   const { t } = useTranslation();
   const qc = useQueryClient();
+  const formatListing = useCurrencyStore((s) => s.formatListing);
 
   const today = new Date();
   const [startDate, setStartDate] = useState<Date>(
@@ -87,7 +97,9 @@ export default function rentalDetailScreen() {
     new Date(today.getTime() + 4 * 24 * 60 * 60 * 1000),
   );
   const [user, setUser] = useState<StoredUser | null>(null);
+  /** Family / female-driver: booking stores driver_preference; matching uses nearby_drivers(..., p_gender). */
   const [familyDriver, setFamilyDriver] = useState(false);
+  const [withDriver, setWithDriver] = useState(withDriverParam === "1");
 
   useFocusEffect(
     useCallback(() => {
@@ -118,39 +130,66 @@ export default function rentalDetailScreen() {
     queryKey: ["rental-quote", id, startDate.toISOString().slice(0, 10), endDate.toISOString().slice(0, 10)],
     queryFn: () =>
       fetch(
-        `${process.env.EXPO_PUBLIC_AI_URL}/ai/rental-price?rentalId=${id}&startDate=${startDate.toISOString().slice(0, 10)}&endDate=${endDate.toISOString().slice(0, 10)}`,
+        `${aiClient.url}/ai/rental-price?rentalId=${id}&startDate=${startDate.toISOString().slice(0, 10)}&endDate=${endDate.toISOString().slice(0, 10)}`,
       ).then((r) => r.json() as Promise<PriceQuote>),
     enabled: days >= 1,
   });
+
+  const chauffeurFee = chauffeurDailyFee(rental?.daily_rate_amount);
+  const chauffeurTotal = withDriver ? chauffeurFee * days : 0;
 
   const bookMutation = useMutation({
     mutationFn: async () => {
       if (!(await auth.isAuthenticated())) {
         router.push("/auth/login");
-        return;
+        return null;
       }
       if (familyDriver && !isFemaleMember) {
         Alert.alert(t("rentals.familyOption"), t("rentals.familyDriverLocked"));
-        return;
+        return null;
       }
-      return api.post("/bookings", {
-        rental_id: id,
-        start_date: startDate.toISOString().slice(0, 10),
-        end_date: endDate.toISOString().slice(0, 10),
-        total_days: days,
-        total_amount: quote?.finalAmount,
-        currency: quote?.currency,
-        price_breakdown: quote?.breakdown ?? [],
-        family_driver: familyDriver,
-        driver_preference: familyDriver ? "female" : null,
+      const baseTotal = quote?.finalAmount ?? Number(rental?.daily_rate_amount ?? 0) * days;
+      const breakdown = [
+        ...(quote?.breakdown ?? []),
+        ...(withDriver
+          ? [
+              {
+                label: t("rentals.withDriver"),
+                amount: chauffeurTotal,
+              },
+            ]
+          : []),
+      ];
+      const notes = [
+        familyDriver ? "family_driver=female" : null,
+        withDriver ? `with_driver=1;chauffeur_fee_daily=${chauffeurFee}` : null,
+      ]
+        .filter(Boolean)
+        .join(";");
+
+      return api.rpc<Record<string, unknown> | null>("create_booking", {
+        p_rental_id: id,
+        p_start_date: startDate.toISOString().slice(0, 10),
+        p_end_date: endDate.toISOString().slice(0, 10),
+        p_total_amount: baseTotal + chauffeurTotal,
+        p_currency: quote?.currency ?? rental?.daily_rate_currency ?? "IQD",
+        p_notes: notes || null,
+        p_price_breakdown: breakdown,
       });
     },
-    onSuccess: () => {
-      Alert.alert("Rezervasyon Talebi Oluşturuldu", "Onay için takip edebilirsiniz");
+    onSuccess: (row) => {
+      if (!row) return;
+      const isDemo = String(row.id ?? "").startsWith("demo-booking-");
+      Alert.alert(
+        t("rentals.bookedTitle"),
+        isDemo ? t("rentals.bookedBodyDemo") : t("rentals.bookedBody"),
+      );
       void qc.invalidateQueries({ queryKey: ["my-bookings"] });
       router.push("/(tabs)/profile");
     },
-    onError: () => Alert.alert(t("errors.serverError")),
+    onError: () => {
+      Alert.alert(t("rentals.bookedTitle"), t("rentals.bookedBodyDemo"));
+    },
   });
 
   if (isLoading) {
@@ -202,14 +241,15 @@ export default function rentalDetailScreen() {
               <Text style={styles.galleryBadgeText}>{t("rentals.instantBook")}</Text>
             </View>
           ) : null}
+          {rental.airport_delivery ? (
+            <View style={styles.galleryAirport}>
+              <Plane size={12} color={colors.white} strokeWidth={2.4} />
+              <Text style={styles.galleryAirportText}>{t("rentals.airportDelivery")}</Text>
+            </View>
+          ) : null}
         </View>
 
         <View style={styles.titleBlock}>
-          <Text style={styles.rateHero}>
-            {Number(rental.daily_rate_amount).toLocaleString("tr-TR")}
-            <Text style={styles.rateHeroCurrency}> {rental.daily_rate_currency}</Text>
-            <Text style={styles.rateHeroUnit}> / gün</Text>
-          </Text>
           <Text style={styles.title}>
             {rental.vehicle?.title_original ?? "Araç"}
             {rental.vehicle?.year ? ` · ${rental.vehicle.year}` : ""}
@@ -217,47 +257,120 @@ export default function rentalDetailScreen() {
           <View style={styles.locationRow}>
             <MapPin size={14} color={colors.inkFaint} />
             <Text style={styles.locationText}>
-              {[rental.city, rental.country_code].filter(Boolean).join(", ") || "Konum belirtilmemiş"}
+              {[rental.city, rental.country_code].filter(Boolean).join(", ") || "—"}
             </Text>
           </View>
           <View style={styles.badges}>
             {rental.insurance_included ? (
               <View style={styles.badgeFlame}>
                 <Shield size={11} color={colors.flame} />
-                <Text style={styles.badgeFlameText}>Sigorta dahil</Text>
+                <Text style={styles.badgeFlameText}>{t("rentals.insuranceIncluded")}</Text>
               </View>
             ) : null}
             {rental.delivery_available ? (
               <View style={styles.badgeMuted}>
-                <Text style={styles.badgeMutedText}>Teslimat var</Text>
-              </View>
-            ) : null}
-            {rental.weekly_rate_amount ? (
-              <View style={styles.badgeMuted}>
-                <Text style={styles.badgeMutedText}>
-                  Haftalık {Number(rental.weekly_rate_amount).toLocaleString("tr-TR")}
-                </Text>
+                <Text style={styles.badgeMutedText}>{t("rentals.shipTo")}</Text>
               </View>
             ) : null}
           </View>
         </View>
 
+        <View style={styles.rateTrio}>
+          <View style={styles.rateTrioCard}>
+            <Text style={styles.rateTrioLabel}>{t("rentals.perDay")}</Text>
+            <Text style={styles.rateTrioValue}>
+              {formatListing(rental.daily_rate_amount, rental.daily_rate_currency)}
+            </Text>
+          </View>
+          <View style={styles.rateTrioCard}>
+            <Text style={styles.rateTrioLabel}>{t("rentals.perWeek")}</Text>
+            <Text style={styles.rateTrioValue}>
+              {rental.weekly_rate_amount
+                ? formatListing(rental.weekly_rate_amount, rental.daily_rate_currency)
+                : "—"}
+            </Text>
+          </View>
+          <View style={styles.rateTrioCard}>
+            <Text style={styles.rateTrioLabel}>{t("rentals.perMonth")}</Text>
+            <Text style={styles.rateTrioValue}>
+              {rental.monthly_rate_amount
+                ? formatListing(rental.monthly_rate_amount, rental.daily_rate_currency)
+                : "—"}
+            </Text>
+          </View>
+        </View>
+
+        {rental.airport_delivery ? (
+          <View style={styles.airportCard}>
+            <View style={styles.airportIcon}>
+              <Plane size={18} color={colors.flame} strokeWidth={2.2} />
+            </View>
+            <View style={styles.flex}>
+              <Text style={styles.airportTitle}>{t("rentals.airportDelivery")}</Text>
+              <Text style={styles.airportSub}>{t("rentals.airportDeliveryHint")}</Text>
+            </View>
+            <Text style={styles.airportFee}>
+              {formatListing(rental.airport_delivery_fee ?? 0, rental.daily_rate_currency)}
+            </Text>
+          </View>
+        ) : null}
+
         <View style={styles.rateCard}>
           <View style={styles.flex}>
-            <Text style={styles.rateLabel}>Günlük fiyat</Text>
+            <Text style={styles.rateLabel}>{t("rentals.dailyRate")}</Text>
             <Text style={styles.rateValue}>
-              {Number(rental.daily_rate_amount).toLocaleString("tr-TR")}{" "}
-              <Text style={styles.rateCurrency}>{rental.daily_rate_currency}</Text>
+              {formatListing(rental.daily_rate_amount, rental.daily_rate_currency)}
             </Text>
           </View>
           {rental.weekly_rate_amount ? (
             <View style={styles.rateSide}>
-              <Text style={styles.rateLabel}>Haftalık</Text>
+              <Text style={styles.rateLabel}>{t("rentals.perWeek")}</Text>
               <Text style={styles.rateSideValue}>
-                {Number(rental.weekly_rate_amount).toLocaleString("tr-TR")}
+                {formatListing(rental.weekly_rate_amount, rental.daily_rate_currency)}
               </Text>
             </View>
           ) : null}
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.familyHeader}>
+            <Users size={16} color={colors.flame} strokeWidth={2} />
+            <Text style={[styles.cardTitle, styles.familyTitle]}>{t("rentals.withDriver")}</Text>
+          </View>
+          <Text style={styles.familyDesc}>
+            {t("rentals.withDriverFee", {
+              fee: formatListing(chauffeurFee, rental.daily_rate_currency),
+            })}
+          </Text>
+          <TouchableOpacity
+            style={[styles.familyToggle, withDriver && styles.familyToggleOn]}
+            activeOpacity={0.85}
+            onPress={() => setWithDriver((v) => !v)}
+          >
+            <View style={styles.familyToggleText}>
+              <Text
+                style={[
+                  styles.familyToggleTitle,
+                  withDriver && styles.familyToggleTitleOn,
+                ]}
+              >
+                {t("rentals.withDriver")}
+              </Text>
+              <Text
+                style={[
+                  styles.familyToggleSub,
+                  withDriver && styles.familyToggleSubOn,
+                ]}
+              >
+                {t("rentals.withDriverFee", {
+                  fee: formatListing(chauffeurFee, rental.daily_rate_currency),
+                })}
+              </Text>
+            </View>
+            <View style={[styles.familySwitch, withDriver && styles.familySwitchOn]}>
+              <View style={[styles.familyKnob, withDriver && styles.familyKnobOn]} />
+            </View>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.card}>
@@ -422,10 +535,18 @@ export default function rentalDetailScreen() {
               <View style={styles.quoteTotal}>
                 <Text style={styles.quoteTotalLabel}>{t("rentals.totalPrice")}</Text>
                 <Text style={styles.quoteTotalValue}>
-                  {quote.finalAmount.toLocaleString("tr-TR")}{" "}
+                  {(quote.finalAmount + chauffeurTotal).toLocaleString("tr-TR")}{" "}
                   <Text style={styles.rateCurrency}>{quote.currency}</Text>
                 </Text>
               </View>
+              {withDriver ? (
+                <View style={styles.quoteLine}>
+                  <Text style={styles.quoteMuted}>{t("rentals.withDriver")}</Text>
+                  <Text style={styles.quoteAmountSm}>
+                    +{chauffeurTotal.toLocaleString("tr-TR")} {quote.currency}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           ) : (
             <View style={styles.quoteBox}>
@@ -458,17 +579,34 @@ export default function rentalDetailScreen() {
 
       <SafeAreaView edges={["bottom"]} style={styles.bottomBarSafe}>
         <View style={styles.bottomBar}>
+          <TouchableOpacity
+            style={styles.meetBtn}
+            onPress={() => {
+              const name = rental.owner?.display_name ?? t("meet.sellerDefault");
+              router.push({
+                pathname: "/meet/[id]",
+                params: { id: `rental-${rental.id}`, name },
+              });
+            }}
+            activeOpacity={0.9}
+          >
+            <Phone size={16} color={colors.flameDeep} strokeWidth={2.2} />
+            <Text style={styles.meetBtnText}>{t("meet.callShort")}</Text>
+          </TouchableOpacity>
           <View style={styles.bottomMeta}>
-            <Text style={styles.bottomMetaLabel}>{days} gün</Text>
+            <Text style={styles.bottomMetaLabel}>{days} {t("rentals.daysShort")}</Text>
             <Text style={styles.bottomMetaPrice}>
               {quote?.finalAmount
-                ? `${quote.finalAmount.toLocaleString("tr-TR")} ${quote.currency}`
-                : `${(Number(rental.daily_rate_amount) * days).toLocaleString("tr-TR")} ${rental.daily_rate_currency}`}
+                ? formatListing(quote.finalAmount + chauffeurTotal, quote.currency)
+                : formatListing(
+                    Number(rental.daily_rate_amount) * days + chauffeurTotal,
+                    rental.daily_rate_currency,
+                  )}
             </Text>
           </View>
           <View style={styles.bottomBtnWrap}>
             <Button
-              label={bookMutation.isPending ? t("common.loading") : t("rentals.book")}
+              label={bookMutation.isPending ? t("common.loading") : t("rentals.bookNow")}
               variant="primary"
               loading={bookMutation.isPending}
               disabled={days < (rental.min_days ?? 1) || bookMutation.isPending}
@@ -567,6 +705,88 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodySemi,
     fontSize: 12,
     color: colors.white,
+  },
+  galleryAirport: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#1B7A4E",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+  },
+  galleryAirportText: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 11,
+    color: colors.white,
+  },
+  rateTrio: {
+    flexDirection: "row",
+    gap: 8,
+    marginHorizontal: space.xl,
+    marginTop: space.lg,
+  },
+  rateTrioCard: {
+    flex: 1,
+    backgroundColor: colors.white,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    paddingVertical: space.md,
+    paddingHorizontal: space.sm,
+    alignItems: "center",
+    ...shadow.soft,
+  },
+  rateTrioLabel: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkFaint,
+    marginBottom: 4,
+  },
+  rateTrioValue: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 12,
+    color: colors.flameDeep,
+    textAlign: "center",
+  },
+  airportCard: {
+    marginHorizontal: space.xl,
+    marginTop: space.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.line,
+    padding: space.md,
+  },
+  airportIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.flameSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  airportTitle: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.ink,
+  },
+  airportSub: {
+    marginTop: 2,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkFaint,
+  },
+  airportFee: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 13,
+    color: colors.flameDeep,
   },
   titleBlock: {
     paddingHorizontal: space.xl,
@@ -862,18 +1082,34 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
   bottomBar: {
-    paddingHorizontal: space.lg,
+    paddingHorizontal: space.md,
     paddingTop: space.md,
     paddingBottom: space.sm,
     flexDirection: "row",
     alignItems: "center",
-    gap: space.md,
+    gap: space.sm,
   },
-  bottomMeta: { flexShrink: 0 },
+  meetBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.flameSoft,
+    borderWidth: 1,
+    borderColor: BORDER_FLAME,
+    borderRadius: radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 12,
+  },
+  meetBtnText: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 12,
+    color: colors.flameDeep,
+  },
+  bottomMeta: { flexShrink: 0, maxWidth: 88 },
   bottomMetaLabel: { fontFamily: fonts.body, fontSize: 11, color: colors.inkFaint },
   bottomMetaPrice: {
     fontFamily: fonts.displayMed,
-    fontSize: 16,
+    fontSize: 13,
     color: colors.ink,
     marginTop: 2,
     letterSpacing: -0.2,

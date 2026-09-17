@@ -10,6 +10,7 @@ import { colors, fonts, radius, space } from "../lib/theme";
 interface Brand {
   id: number;
   name: string;
+  name_en?: string | null;
   logo_url?: string | null;
 }
 
@@ -145,7 +146,12 @@ export function FilterSheet({ visible, onClose, onApply, brands = [] }: Props) {
                       onPress={() => toggleId("makeIds", b.id)}
                       activeOpacity={0.85}
                     >
-                      <BrandLogo name={b.name} logoUrl={b.logo_url} size={40} />
+                      <BrandLogo
+                        name={b.name}
+                        nameEn={b.name_en}
+                        logoUrl={b.logo_url}
+                        size={40}
+                      />
                       <Text
                         style={[styles.brandCellName, active && styles.brandCellNameActive]}
                         numberOfLines={1}

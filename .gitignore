@@ -45,6 +45,15 @@ coverage/
 # Expo
 expo-env.d.ts
 
+# Local env / soft-launch LAN overrides (never commit)
+apps/mobile/.env
+apps/mobile/.env.lan
+
+# Release binaries & QR snapshots
+*.apk
+*expo-qr*.png
+.expo-qr.png
+
 # iOS / Android (Expo managed ise genelde yok)
 ios/
 android/
@@ -57,3 +66,4 @@ minio-data/
 # Misc
 .cache/
 .parcel-cache/
+.run/

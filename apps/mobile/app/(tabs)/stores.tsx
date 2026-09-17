@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   Star,
   Store,
+  Zap,
 } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -22,9 +23,11 @@ import {
   View,
 } from "react-native";
 
+import { Badge } from "../../components/ui/Badge";
 import { Chip } from "../../components/ui/Chip";
 import { Screen, ScreenHeader } from "../../components/ui/Screen";
 import { api } from "../../lib/api";
+import { isResponsiveDealer } from "../../lib/marketplace-heuristics";
 import { colors, fonts, radius, shadow, space } from "../../lib/theme";
 
 type StoreItem = {
@@ -153,7 +156,12 @@ export default function StoresTabScreen() {
 }
 
 function StoreCard({ item }: { item: StoreItem }) {
+  const { t } = useTranslation();
   const initial = item.name.charAt(0).toUpperCase();
+  const responsive = isResponsiveDealer({
+    verified: item.verified,
+    rating_avg: item.rating_avg,
+  });
 
   return (
     <TouchableOpacity
@@ -170,12 +178,22 @@ function StoreCard({ item }: { item: StoreItem }) {
           </View>
         )}
         <View style={styles.coverShade} />
-        {item.verified ? (
-          <View style={styles.verifiedBadge}>
-            <ShieldCheck size={12} color={colors.white} strokeWidth={2.4} />
-            <Text style={styles.verifiedText}>Doğrulanmış</Text>
-          </View>
-        ) : null}
+        <View style={styles.coverBadges}>
+          {item.verified ? (
+            <Badge
+              label={t("vehicle.verifiedBadge")}
+              tone="viridian"
+              icon={<ShieldCheck size={11} color={colors.viridianDeep} strokeWidth={2.5} />}
+            />
+          ) : null}
+          {responsive ? (
+            <Badge
+              label={t("vehicle.responsiveBadge")}
+              tone="mist"
+              icon={<Zap size={11} color={colors.flameDeep} strokeWidth={2.5} />}
+            />
+          ) : null}
+        </View>
         {item.listing_count != null ? (
           <View style={styles.listingBadge}>
             <Text style={styles.listingBadgeText}>{item.listing_count} ilan</Text>
@@ -323,6 +341,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: radius.sm,
+  },
+  coverBadges: {
+    position: "absolute",
+    top: 10,
+    left: 10,
+    right: 10,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
   },
   verifiedText: {
     fontFamily: fonts.bodySemi,

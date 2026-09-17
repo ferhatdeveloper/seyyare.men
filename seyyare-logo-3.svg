@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="2048" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="g" x1="320" y1="80" x2="680" y2="720" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFC15A"/>
+      <stop offset="0.35" stop-color="#FF8A1F"/>
+      <stop offset="1" stop-color="#E24A00"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Orange S-pin -->
+  <g filter="url(#soft)">
+    <path fill="url(#g)" d="
+      M 430 140
+      C 360 140, 310 190, 310 255
+      C 310 300, 335 335, 380 365
+      C 430 400, 470 435, 470 490
+      C 470 545, 430 580, 365 595
+      C 410 640, 465 690, 512 760
+      C 559 690, 614 640, 659 595
+      C 594 580, 554 545, 554 490
+      C 554 435, 594 400, 644 365
+      C 689 335, 714 300, 714 255
+      C 714 190, 664 140, 594 140
+      C 545 140, 515 165, 512 200
+      C 509 165, 479 140, 430 140
+      Z
+    "/>
+    <!-- Road fill -->
+    <path fill="#1A1A1A" d="
+      M 430 195
+      C 455 175, 500 175, 530 195
+      C 565 220, 560 260, 525 285
+      C 490 310, 455 335, 445 375
+      C 435 415, 460 450, 505 470
+      C 550 490, 585 520, 575 565
+      C 565 605, 520 625, 470 610
+      C 505 650, 555 640, 575 600
+      C 600 545, 555 510, 505 490
+      C 455 470, 420 430, 435 385
+      C 450 340, 495 310, 530 285
+      C 565 260, 560 230, 535 210
+      C 510 190, 465 190, 445 210
+      C 425 220, 415 210, 430 195
+      Z
+    "/>
+    <!-- Dashes -->
+    <path d="M460 220 C500 200 545 220 540 255 C535 290 485 310 460 345 C435 380 445 425 485 450 C525 475 560 510 545 555 C535 585 500 600 470 595"
+      fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-dasharray="18 14"/>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="512" y="860" text-anchor="middle" font-family="Arial, Helvetica Neue, Helvetica, sans-serif" font-weight="700" font-size="72">
+    <tspan fill="#FFFFFF">seyyare</tspan><tspan fill="#FF8A1F">.men</tspan>
+  </text>
+
+  <!-- Services -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- car -->
+    <g transform="translate(210 900)">
+      <path d="M20 36c0-12 12-22 36-22s36 10 36 22l8 14c3 5 1 10-6 10H18c-7 0-9-5-6-10z"/>
+      <circle cx="32" cy="60" r="8" fill="#121212"/>
+      <circle cx="80" cy="60" r="8" fill="#121212"/>
+      <path d="M34 30h44"/>
+    </g>
+    <!-- key -->
+    <g transform="translate(456 904)">
+      <circle cx="28" cy="28" r="16"/>
+      <circle cx="28" cy="28" r="6"/>
+      <path d="M42 36l38 38"/>
+      <path d="M64 58h12"/>
+      <path d="M72 66h10"/>
+    </g>
+    <!-- taxi -->
+    <g transform="translate(700 896)">
+      <rect x="40" y="6" width="28" height="12" rx="2"/>
+      <path d="M20 40c0-12 14-22 40-22s40 10 40 22l8 14c3 5 1 10-6 10H18c-7 0-9-5-6-10z"/>
+      <circle cx="36" cy="64" r="8" fill="#121212"/>
+      <circle cx="84" cy="64" r="8" fill="#121212"/>
+    </g>
+  </g>
+
+  <line x1="360" y1="910" x2="360" y2="990" stroke="#FFFFFF" stroke-opacity="0.4" stroke-width="2"/>
+  <line x1="664" y1="910" x2="664" y2="990" stroke="#FFFFFF" stroke-opacity="0.4" stroke-width="2"/>
+
+  <text x="266" y="1010" text-anchor="middle" fill="#FFFFFF" font-family="Arial, Helvetica Neue, Helvetica, sans-serif" font-size="18">Ara&#231; Sat&#305;&#351;</text>
+  <text x="512" y="1010" text-anchor="middle" fill="#FFFFFF" font-family="Arial, Helvetica Neue, Helvetica, sans-serif" font-size="18">Kiralama</text>
+  <text x="758" y="1010" text-anchor="middle" fill="#FFFFFF" font-family="Arial, Helvetica Neue, Helvetica, sans-serif" font-size="18">Taksi &#199;a&#287;&#305;rma</text>
+</svg>

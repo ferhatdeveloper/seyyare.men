@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { Bell, Globe, MapPin } from "lucide-react-native";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Modal,
@@ -18,6 +18,11 @@ import {
   supportedLocales,
   type LocaleCode,
 } from "../../lib/locales";
+import {
+  type AppCurrency,
+  useCurrencyStore,
+} from "../../lib/currency-store";
+import { iqdPerUsd } from "../../lib/hatwan-rates";
 import { colors, fonts, radius, space } from "../../lib/theme";
 import { BrandMark } from "./BrandMark";
 import { BrandWordmark } from "./BrandWordmark";
@@ -53,20 +58,36 @@ export function AppHeader({
 }: Props) {
   const { t, i18n } = useTranslation();
   const [langOpen, setLangOpen] = useState(false);
+  const [fxOpen, setFxOpen] = useState(false);
+  const display = useCurrencyStore((s) => s.display);
+  const quote = useCurrencyStore((s) => s.quote);
+  const setDisplay = useCurrencyStore((s) => s.setDisplay);
+  const refreshRates = useCurrencyStore((s) => s.refreshRates);
   const currentLocale = (supportedLocales.includes(i18n.language as LocaleCode)
     ? i18n.language
     : "tr") as LocaleCode;
+
+  useEffect(() => {
+    void refreshRates(false);
+  }, [refreshRates]);
 
   const changeLocale = (locale: LocaleCode) => {
     void i18n.changeLanguage(locale);
     setLangOpen(false);
   };
 
+  const changeCurrency = (c: AppCurrency) => {
+    void setDisplay(c);
+    setFxOpen(false);
+  };
+
+  const mid = quote ? iqdPerUsd(quote, "mid") : null;
+
   const body = (
     <View style={[styles.wrap, !safeTop && styles.wrapNoSafe, style]}>
       <View style={styles.row}>
         <View style={styles.brand}>
-          <BrandMark size={30} />
+          <BrandMark size={30} tone="dark" />
           <View style={styles.copy}>
             <BrandWordmark script="latin" size={15} tone="light" />
             <Text style={styles.tagline} numberOfLines={1}>
@@ -85,6 +106,14 @@ export function AppHeader({
                 accessibilityLabel="Konum"
               >
                 <MapPin size={15} color={colors.flame} strokeWidth={2.2} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.langBtn}
+                hitSlop={8}
+                onPress={() => setFxOpen(true)}
+                accessibilityLabel={t("currency.label")}
+              >
+                <Text style={styles.langCode}>{display}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.langBtn}
@@ -149,6 +178,52 @@ export function AppHeader({
                 </TouchableOpacity>
               );
             })}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal
+        visible={fxOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFxOpen(false)}
+      >
+        <Pressable style={styles.langBackdrop} onPress={() => setFxOpen(false)}>
+          <Pressable style={styles.langSheet} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.langSheetTitle}>{t("currency.label")}</Text>
+            {mid ? (
+              <Text style={styles.fxRate}>
+                {t("currency.hatwanMid", {
+                  rate: mid.toLocaleString("en-US", { maximumFractionDigits: 1 }),
+                })}
+              </Text>
+            ) : null}
+            <Text style={styles.fxSource}>{t("currency.hatwanSource")}</Text>
+            {(["IQD", "USD"] as AppCurrency[]).map((c) => {
+              const selected = c === display;
+              return (
+                <TouchableOpacity
+                  key={c}
+                  style={[styles.langOption, selected && styles.langOptionActive]}
+                  onPress={() => changeCurrency(c)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.langOptionCode, selected && styles.langOptionCodeActive]}>
+                    {c}
+                  </Text>
+                  <Text style={[styles.langOptionName, selected && styles.langOptionNameActive]}>
+                    {c === "IQD" ? t("currency.iqd") : t("currency.usd")}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+            <TouchableOpacity
+              style={styles.fxRefresh}
+              onPress={() => void refreshRates(true)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.fxRefreshText}>{t("currency.refresh")}</Text>
+            </TouchableOpacity>
           </Pressable>
         </Pressable>
       </Modal>
@@ -278,5 +353,27 @@ const styles = StyleSheet.create({
   langOptionNameActive: {
     fontFamily: fonts.bodySemi,
     color: colors.flameDeep,
+  },
+  fxRate: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.ink,
+    marginBottom: 4,
+  },
+  fxSource: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.inkMuted,
+    marginBottom: space.md,
+  },
+  fxRefresh: {
+    marginTop: space.sm,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  fxRefreshText: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.flame,
   },
 });

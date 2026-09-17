@@ -5,6 +5,7 @@ import type { FastifyInstance } from "fastify";
 import { db } from "../lib/db.js";
 import { redis } from "../lib/redis.js";
 import { getAgentPerformance, compareModels, budget, type BudgetConfig } from "../ab-testing.js";
+import { enqueueNotify } from "../queue/producer.js";
 
 interface AgentMetrics {
   agent: string;
@@ -216,6 +217,26 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     const keys = await redis.client.keys(pattern);
     if (keys.length > 0) await redis.client.del(keys);
     return reply.send({ cleared: keys.length, pattern });
+  });
+
+  /**
+   * POST /queue/enqueue-demo
+   * BullMQ notify kuyruğuna demo job ekler (debug)
+   */
+  app.post("/queue/enqueue-demo", async (req, reply) => {
+    const body = (req.body ?? {}) as {
+      userId?: string;
+      title?: string;
+      body?: string;
+      data?: Record<string, unknown>;
+    };
+    const jobId = await enqueueNotify({
+      userId: body.userId ?? "demo-user",
+      title: body.title ?? "Seyyare demo",
+      body: body.body ?? "Queue notify stub OK",
+      data: body.data ?? { source: "enqueue-demo" },
+    });
+    return reply.send({ ok: true, queue: "notify", jobId });
   });
 
   /**

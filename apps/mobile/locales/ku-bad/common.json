@@ -9,7 +9,8 @@
     "sell": "Firotin",
     "rentals": "Kirê",
     "profile": "Profîl",
-    "stores": "Dikan"
+    "stores": "Dikan",
+    "services": "Xizmet"
   },
   "auth": {
     "login": "Têkeve",
@@ -30,7 +31,15 @@
     "language": "Ziman",
     "selectLanguage": "Ziman hilbijêre",
     "continueAsGuest": "Wek mêvan berdewam bike",
-    "termsNotice": "Bi berdewamkirinê tu bi şert û merc û siyaseta nepeniyê re razî yî"
+    "termsNotice": "Bi berdewamkirinê tu bi şert û merc û siyaseta nepeniyê re razî yî",
+    "demoAccounts": "Hesabên demo",
+    "demoUser": "Bikarhêner",
+    "demoDealer": "Firoşkar",
+    "demoAdmin": "Admin",
+    "demoDriver": "Şofêr / Taksî",
+    "roleUser": "Kesane",
+    "roleDealer": "Galerî / Firoşkar",
+    "roleDriver": "Şofêr / Taksî"
   },
   "home": {
     "greeting": "Silav",
@@ -40,7 +49,14 @@
     "featuredRentals": "Kirêyên taybet",
     "aiAssistant": "Alîkarê AI",
     "aiAssistantPrompt": "Ji min re erebekî pêşniyar bike",
-    "seeAll": "Hemû bibîne"
+    "seeAll": "Hemû bibîne",
+    "auctions": "Muzayede",
+    "budgetUnder10M": "Under 10M IQD",
+    "budgetUnder25M": "Under 25M IQD",
+    "budgetUnder50M": "Under 50M IQD",
+    "budgetUnder100M": "Under 100M IQD",
+    "goodDeal": "Good Deal",
+    "responsiveDealer": "Responsive"
   },
   "search": {
     "title": "Erebeyan Bigere",
@@ -61,7 +77,36 @@
     "apply": "Bisepîne",
     "reset": "Vegerîne",
     "noResults": "Netîce nehat dîtin",
-    "resultsCount": "{{count}} netîce"
+    "resultsCount": "{{count}} netîce",
+    "quickMake": "Marka",
+    "priceUnder": "Bin 10M",
+    "priceMid": "10–25M",
+    "priceOver": "25M+",
+    "yearFrom2020": "2020+",
+    "yearFrom2015": "2015+",
+    "yearOlder": "Kevntir",
+    "sortNewest": "Nûtirîn",
+    "sortPriceLow": "Erzan",
+    "brands": "Brands",
+    "trim": "Trim",
+    "fromYear": "From Year",
+    "toYear": "To Year",
+    "minPrice": "Min Price",
+    "maxPrice": "Max Price",
+    "minMileage": "Min Mileage",
+    "maxMileage": "Max Mileage",
+    "plateCity": "Plate City",
+    "plateType": "Plate Type",
+    "platePrivate": "Private",
+    "plateCommercial": "Commercial",
+    "plateOfficial": "Official",
+    "condition": "Condition",
+    "conditionUsed": "Used",
+    "conditionNew": "New",
+    "showCars": "Show {{count}} Cars",
+    "savedTitle": "Saved",
+    "savedBody": "Search added to saved searches.",
+    "saveFailed": "Could not save search."
   },
   "sell": {
     "title": "Erebeya xwe bifiroşe",
@@ -103,7 +148,9 @@
     "familyDriverLocked": "Ji bo vê vebijarkê cinsê profîlê divê jin be.",
     "familyDriverLogin": "Ji bo xwestina ajokerê jin têkeve.",
     "familyDriverSetGender": "Di profîlê de cinsê bike jin.",
-    "familyHint": "Vebijarka ajokerê jin ji bo malbatê — tenê endamên jin"
+    "familyHint": "Vebijarka ajokerê jin ji bo malbatê — tenê endamên jin",
+    "withDriver": "With driver",
+    "withDriverFee": "+{{fee}}/day"
   },
   "vehicle": {
     "specs": "Taybetmendî",
@@ -118,7 +165,10 @@
     "similarListings": "Danasînên wekhev",
     "aiAnalysis": "Analîza AI",
     "conditionScore": "Puana rewşê",
-    "damageReport": "Rapora ziyanê"
+    "damageReport": "Rapora ziyanê",
+    "verifiedBadge": "Verified",
+    "responsiveBadge": "Responsive",
+    "goodDealBadge": "Good Deal"
   },
   "profile": {
     "title": "Profîl",
@@ -131,7 +181,16 @@
     "help": "Alîkarî",
     "about": "Derbarê",
     "version": "Guherto",
-    "deleteAccount": "Hesabê jê bibe"
+    "deleteAccount": "Hesabê jê bibe",
+    "sectionAccount": "Hesabê min",
+    "sectionServices": "Xizmet",
+    "sectionBusiness": "Karsazî",
+    "sectionMore": "Zêdetir",
+    "apiAddress": "Navnîşana API ya demkî",
+    "apiAddressHint": "Tunnel / soft-live gateway. Sererast bike û tomar bike.",
+    "apiAddressPlaceholder": "https://….trycloudflare.com",
+    "apiAddressReset": "Vegere standardê",
+    "apiAddressSaved": "Navnîşana API hate nûkirin"
   },
   "common": {
     "loading": "Tê barkirin...",
@@ -156,7 +215,8 @@
     "less": "Kêmtir",
     "km": "km",
     "year": "sal",
-    "currency": "₺"
+    "currency": "₺",
+    "select": "Select"
   },
   "errors": {
     "network": "Girêdana înterneta xwe kontrol bike",
@@ -171,11 +231,162 @@
     "rent": "Kirê",
     "taxi": "Takşî bang bike"
   },
+  "hub": {
+    "buy": "Erebe bikirê",
+    "sell": "Bifroşe",
+    "rent": "Bike kirê",
+    "taxi": "Takşî",
+    "ride": "Rêwîtî",
+    "moreServices": "Zêdetir xizmet",
+    "guide": "Rêber",
+    "airport": "Balafirgeh",
+    "wash": "Şuştina erebê",
+    "pay": "Cüzdan / Pay",
+    "sharedRide": "Navbera bajaran"
+  },
+  "modeSelect": {
+    "title": "Tu çi dixwazî?",
+    "subtitle": "Pêşî bikirê an bike kirê — paşê bifroşe, rêwîtî û xizmetên din.",
+    "tagline": "Bazara erebeyên Iraqê",
+    "moreServices": "Xizmetên din",
+    "primaryServices": "Xizmetên sereke",
+    "preferences": "Vebijark",
+    "language": "Ziman",
+    "city": "Bajar",
+    "hintRide": "Takşî, parvekirî an veguhestina balafirgehê",
+    "hintBuy": "Bigere, berawird bike, bi firoşkar re biaxivî",
+    "hintRent": "Rojane · heftane · mehane · teslîmkirina balafirgehê",
+    "hintSell": "Îlan bike, bi cüzdanê belav bike",
+    "hintAuctions": "Pêşniyara zindî bide",
+    "hintWallet": "Balans û dayîn",
+    "hintWash": "Şuştina li derî",
+    "hintShared": "Kursiyên navbera bajaran",
+    "hintGuide": "Rêbera kirînê",
+    "browseListings": "Pêşî li îlanan binêre",
+    "popular": "Populer",
+    "changeMode": "Hilbijartina xizmetê biguherîne"
+  },
+  "ride": {
+    "modes": {
+      "city": "Takşî",
+      "shared": "Parvekirî",
+      "airport": "Balafirgeh"
+    },
+    "badge": {
+      "city": "Demo",
+      "shared": "Parvekirî · demo",
+      "airport": "Transfera balafirgehê · demo"
+    },
+    "lead": {
+      "city": "Ji ku ber bi ku? Bihayê û dem zû.",
+      "shared": "Rê parve bike, kêmtir bide.",
+      "airport": "Transfera balafirgehê ↔ bajêr."
+    },
+    "from": "Ji",
+    "to": "Ber bi",
+    "fromPlaceholder": "Xala hilgirtinê",
+    "toPlaceholder": "Destpêk",
+    "vehicleType": "Cureyê erebê",
+    "payment": "Dayîn",
+    "allMethods": "Hemû rêbaz (Qi Card, Apple Pay…)",
+    "eta": "Gihîştina texmînî",
+    "fare": "Texmîna kirê",
+    "minutes": "deqe",
+    "ctaCity": "Takşî bixwaze",
+    "ctaShared": "Kursî rezerv bike",
+    "ctaAirport": "Transfer bixwaze",
+    "demoNote": "Demo — rêwîtiya rastîn nayê şandin.",
+    "missingTitle": "Agahî kêm e",
+    "missingBody": "Ji kerema xwe destpêkê binivîse.",
+    "demoCreated": "Rêwîtiya demo hat afirandin",
+    "matchedTitle": "Ajoker hat hevberkirin",
+    "matchedDriver": "Ajokerê hevberkirî",
+    "matchedEta": "ETA ~{{min}} xulek",
+    "matching": "Ajoker tê gerîn…",
+    "goHome": "Mal"
+  },
+  "guide": {
+    "subtitle": "Rêberên erebe û nûçeyên herêmî",
+    "demoNote": "Naveroka demo — CMS paşê."
+  },
+  "wallet": {
+    "subtitle": "Balans û rêbazên dayînê",
+    "balance": "Balansa cüzdanê",
+    "demoBalance": "Balansa demo · dayîna rastîn tune",
+    "topUp": "Balans zêde bike",
+    "payMethod": "Rêbaza dayînê",
+    "selected": "Rêbaza hilbijartî",
+    "lastTopUp": "Zêdekirina dawî",
+    "useInTaxi": "Di takşî de bide",
+    "iraqHint": "Cüzdan û torên kart ên gelemperî li Iraq / Herêma Kurdistanê",
+    "globalHint": "Kart û cüzdanên navneteweyî (Stripe)",
+    "pspNote": "UI demo — FastPay, FIB, ZainCash, Stripe paşê.",
+    "groups": {
+      "local": "Herêmî / Seyyare",
+      "iraq": "Dayîna Iraqê",
+      "global": "Gerdûnî"
+    },
+    "methods": {
+      "cash": "Perê destî",
+      "card": "Kart",
+      "wallet": "Cüzdana Seyyare",
+      "fastpay": "FastPay",
+      "fib": "FIB",
+      "zaincash": "ZainCash",
+      "qiCard": "Qi Card",
+      "nasswallet": "NassWallet",
+      "stripe": "Stripe (Visa/MC)",
+      "applePay": "Apple Pay",
+      "googlePay": "Google Pay"
+    }
+  },
   "gender": {
     "label": "Cins",
     "female": "Jin",
     "male": "Mêr",
     "unspecified": "Naxwazim bibêjim",
     "hint": "Ji bo kirêya malbatê / ajokerê jin divê jin were hilbijartin"
+  },
+  "currency": {
+    "label": "Dirav",
+    "iqd": "Dînarê Iraqê (IQD)",
+    "usd": "Dolarê Amerîkî (USD)",
+    "hatwanSource": "Nirxa rojane: Hatwan Exchange (Hewlêr)",
+    "hatwanMid": "1 USD ≈ {{rate}} IQD",
+    "refresh": "Nirxê nû bike",
+    "buy": "Kirîn",
+    "sale": "Firotin"
+  },
+  "auction": {
+    "title": "Muzayede",
+    "subtitle": "Muzayedeyên erebeyên zindî û nêzîk",
+    "empty": "Ji bo vê fîlterê muzayede tune",
+    "bids": "pêşniyar",
+    "currentBid": "Pêşniyara niha",
+    "startPrice": "Destpêk",
+    "reserve": "Rezerv",
+    "noReserve": "Rezerv tune",
+    "reserveMet": "Rezerv derbas bû",
+    "reserveNotMet": "Rezerv hîn derbas nebû",
+    "endsIn": "Ji bo bidawîbûnê",
+    "startsIn": "Ji bo destpêkirinê",
+    "ended": "Qediya",
+    "notStarted": "Muzayede hîn dest pê nekiriye",
+    "bidHistory": "Dîroka pêşniyaran",
+    "noBidsYet": "Hîn pêşniyar tune",
+    "viewListing": "Rêklamê bibîne",
+    "nextBid": "Pêşniyara din",
+    "minIncrement": "zêdebûna herî kêm",
+    "placeBid": "Pêşniyar bide",
+    "bidPlaced": "Pêşniyar hate tomar kirin",
+    "bidPlacedBody": "Pêşniyara te {{amount}} hate tomar kirin (demo).",
+    "liveBanner": "Muzayedeya zindî",
+    "liveUpdating": "Zindî",
+    "upcomingBanner": "Muzayedeya nêzîk",
+    "status": {
+      "live": "Zindî",
+      "upcoming": "Nêzîk",
+      "ended": "Qediya"
+    }
   }
 }

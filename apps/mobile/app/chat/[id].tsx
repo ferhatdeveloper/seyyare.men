@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
-import { Send } from "lucide-react-native";
+import { Phone, Send } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -93,12 +93,39 @@ export default function ChatScreen() {
     sendMutation.mutate(text.trim());
   };
 
+  const startMeet = () => {
+    router.push({
+      pathname: "/meet/[id]",
+      params: { id, name: t("meet.sellerDefault") },
+    });
+  };
+
   const canSend = text.trim().length > 0 && !sendMutation.isPending;
   const displayMessages = localMessages;
 
   return (
     <Screen edges={["top"]}>
-      <ScreenHeader title="Sohbet" onBack={() => router.back()} />
+      <ScreenHeader
+        title={t("meet.chatTitle")}
+        subtitle={t("meet.chatSubtitle")}
+        onBack={() => router.back()}
+        right={
+          <TouchableOpacity style={styles.meetHeaderBtn} onPress={startMeet} hitSlop={8}>
+            <Phone size={16} color={colors.flame} strokeWidth={2.2} />
+          </TouchableOpacity>
+        }
+      />
+
+      <View style={styles.meetBanner}>
+        <View style={styles.flex}>
+          <Text style={styles.meetBannerTitle}>{t("meet.bannerTitle")}</Text>
+          <Text style={styles.meetBannerBody}>{t("meet.bannerBody")}</Text>
+        </View>
+        <TouchableOpacity style={styles.meetBannerCta} onPress={startMeet} activeOpacity={0.9}>
+          <Phone size={14} color={colors.white} strokeWidth={2.2} />
+          <Text style={styles.meetBannerCtaText}>{t("meet.start")}</Text>
+        </TouchableOpacity>
+      </View>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -134,7 +161,9 @@ export default function ChatScreen() {
                       isMine ? styles.bubbleMineTail : styles.bubbleOtherTail,
                     ]}
                   >
-                    <Text style={isMine ? styles.bubbleTextMine : styles.bubbleTextOther}>{m.body}</Text>
+                    <Text style={isMine ? styles.bubbleTextMine : styles.bubbleTextOther}>
+                      {m.body}
+                    </Text>
                   </View>
                   <Text style={styles.time}>
                     {new Date(m.created_at).toLocaleTimeString("tr-TR", {
@@ -147,9 +176,7 @@ export default function ChatScreen() {
             })
           ) : (
             <View style={styles.empty}>
-              <Text style={styles.emptyText}>
-                Henüz mesaj yok. İlk mesajı göndererek iletişime geçin.
-              </Text>
+              <Text style={styles.emptyText}>{t("meet.emptyChat")}</Text>
             </View>
           )}
         </ScrollView>
@@ -157,7 +184,7 @@ export default function ChatScreen() {
         <View style={styles.composer}>
           <TextInput
             style={styles.input}
-            placeholder="Mesaj yazın..."
+            placeholder={t("meet.messagePlaceholder")}
             placeholderTextColor={colors.inkFaint}
             value={text}
             onChangeText={setText}
@@ -179,6 +206,50 @@ export default function ChatScreen() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  meetHeaderBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.flameSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  meetBanner: {
+    marginHorizontal: space.lg,
+    marginBottom: space.sm,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    backgroundColor: colors.ink,
+    borderRadius: radius.lg,
+    padding: space.md,
+  },
+  meetBannerTitle: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 13,
+    color: colors.white,
+  },
+  meetBannerBody: {
+    marginTop: 2,
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: "rgba(255,255,255,0.65)",
+    lineHeight: 15,
+  },
+  meetBannerCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.flame,
+    borderRadius: radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  meetBannerCtaText: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 12,
+    color: colors.white,
+  },
   chatContent: { paddingHorizontal: space.lg, paddingVertical: space.md },
   loader: { marginTop: space.section },
   msgRow: { marginBottom: space.sm },
@@ -203,8 +274,18 @@ const styles = StyleSheet.create({
   },
   bubbleMineTail: { borderBottomRightRadius: radius.sm },
   bubbleOtherTail: { borderBottomLeftRadius: radius.sm },
-  bubbleTextMine: { fontFamily: fonts.body, fontSize: 14, color: colors.white, lineHeight: 20 },
-  bubbleTextOther: { fontFamily: fonts.body, fontSize: 14, color: colors.ink, lineHeight: 20 },
+  bubbleTextMine: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.white,
+    lineHeight: 20,
+  },
+  bubbleTextOther: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.ink,
+    lineHeight: 20,
+  },
   time: {
     fontFamily: fonts.body,
     fontSize: 10,
@@ -212,7 +293,11 @@ const styles = StyleSheet.create({
     marginTop: 2,
     paddingHorizontal: 4,
   },
-  empty: { alignItems: "center", marginTop: space.section * 2, paddingHorizontal: space.xxl },
+  empty: {
+    alignItems: "center",
+    marginTop: space.section * 2,
+    paddingHorizontal: space.xxl,
+  },
   emptyText: {
     fontFamily: fonts.body,
     fontSize: 13,

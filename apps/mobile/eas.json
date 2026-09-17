@@ -14,7 +14,8 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.seyyare.men",
         "EXPO_PUBLIC_AI_URL": "https://ai.seyyare.men",
-        "EXPO_PUBLIC_AUTH_URL": "https://auth.seyyare.men"
+        "EXPO_PUBLIC_AUTH_URL": "https://auth.seyyare.men",
+        "EXPO_PUBLIC_USE_DEMO_FALLBACK": "false"
       }
     }
   },

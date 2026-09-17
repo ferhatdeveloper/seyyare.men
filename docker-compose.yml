@@ -2,8 +2,10 @@ version: "3.9"
 
 services:
   postgres:
-    # pgvector + postgis + postgresql 16 — Recommendation Agent vector search için
-    image: pgvector/pgvector:pg16
+    build:
+      context: ./infra/postgres
+      dockerfile: Dockerfile
+    image: seyyare-postgres:16-postgis-pgvector
     container_name: seyyare-postgres
     restart: unless-stopped
     environment:
@@ -11,19 +13,45 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/00_init.sql:ro
+      - ./infra/postgres/01_apply_schema.sh:/docker-entrypoint-initdb.d/01_apply_schema.sh:ro
       - ./api/db/migrations:/docker-entrypoint-initdb.d/migrations:ro
       - ./api/db/functions:/docker-entrypoint-initdb.d/functions:ro
       - ./api/db/policies:/docker-entrypoint-initdb.d/policies:ro
-      - ./infra/postgres/seed.sql:/docker-entrypoint-initdb.d/99_seed.sql:ro
+      - ./infra/postgres/seed.sql:/docker-entrypoint-initdb.d/02_seed_reference.sql:ro
+      - ./infra/postgres/seed_demo.sql:/docker-entrypoint-initdb.d/03_seed_demo.sql:ro
+      - ./infra/postgres/seed_demo_catalog.sql:/docker-entrypoint-initdb.d/04_seed_demo_catalog.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - seyyare-net
+
+  # Optional connection pooler. Default stack talks to postgres:5432 directly.
+  # Enable: docker compose --profile pgbouncer up -d
+  # Then point app URIs at pgbouncer:6432 (see .env.example).
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.23.1-p1
+    container_name: seyyare-pgbouncer
+    restart: unless-stopped
+    profiles: ["pgbouncer"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      LISTEN_PORT: 6432
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 200
+      DEFAULT_POOL_SIZE: 20
+      AUTH_TYPE: scram-sha-256
+    ports:
+      - "${PGBOUNCER_PORT:-6432}:6432"
     networks:
       - seyyare-net
 
@@ -34,6 +62,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # Default: direct postgres (PGRST_DB_URI → postgres:5432).
+    # With profile pgbouncer, optionally set:
+    #   PGRST_DB_URI=postgres://USER:PASS@pgbouncer:6432/DB
+    # Note: transaction pooling + prepared statements may need session mode or
+    # PostgREST PGRST_DB_PREPARED_STATEMENTS=false — keep direct URI unless needed.
     environment:
       PGRST_DB_URI: ${PGRST_DB_URI}
       PGRST_DB_ANON_ROLE: ${PGRST_DB_ANON_ROLE}
@@ -70,7 +103,7 @@ services:
       - seyyare-net
 
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z
     container_name: seyyare-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -157,8 +190,12 @@ services:
       OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL}
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379${REDIS_PASSWORD:+:${REDIS_PASSWORD}}
+      # BullMQ workers run in-process (same container). QUEUE_WORKERS=1 enable, =0 disable.
+      QUEUE_WORKERS: ${QUEUE_WORKERS:-1}
       JWT_SECRET: ${JWT_SECRET}
       PGRST_JWT_SECRET: ${PGRST_JWT_SECRET}
+      # PSP webhook shared secret (POST /webhooks/psp → X-PSP-Webhook-Secret)
+      PSP_WEBHOOK_SECRET: ${PSP_WEBHOOK_SECRET:-}
     ports:
       - "${ORCHESTRATOR_PORT}:${ORCHESTRATOR_PORT}"
     networks:
@@ -188,12 +225,24 @@ services:
       - auth-service
       - ai-service
       - orchestrator
+      - web
     volumes:
       - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./infra/nginx/certs:/etc/nginx/certs:ro
+      - nginx_media_cache:/var/cache/nginx/media
     ports:
-      - "${HTTP_PORT}:80"
-      - "${HTTPS_PORT}:443"
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    networks:
+      - seyyare-net
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    image: seyyare-web:latest
+    container_name: seyyare-web
+    restart: unless-stopped
     networks:
       - seyyare-net
 
@@ -201,6 +250,7 @@ volumes:
   postgres_data:
   redis_data:
   minio_data:
+  nginx_media_cache:
 
 networks:
   seyyare-net:

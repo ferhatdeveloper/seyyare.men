@@ -1,4 +1,4 @@
-import { LinearGradient } from "expo-linear-gradient";
+import { SoftGradient as LinearGradient } from "../../components/SoftGradient";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
@@ -20,13 +20,46 @@ import { Button } from "../../components/ui/Button";
 import { Field } from "../../components/ui/Field";
 import { api } from "../../lib/api";
 import { auth } from "../../lib/auth";
+import { useDriverStore } from "../../lib/driver-store";
+import { useModeStore } from "../../lib/mode-store";
 import { colors, fonts, radius, shadow, space } from "../../lib/theme";
+
+const DEMO_PASSWORD = "Demo123!";
+
+const DEMO_ACCOUNTS = [
+  { role: "user" as const, email: "demo@seyyare.men", labelKey: "auth.demoUser", home: "/(tabs)" as const },
+  { role: "dealer" as const, email: "premium@seyyare.men", labelKey: "auth.demoDealer", home: "/(tabs)" as const },
+  { role: "driver" as const, email: "driver@seyyare.men", labelKey: "auth.demoDriver", home: "/driver" as const },
+  { role: "admin" as const, email: "admin@seyyare.men", labelKey: "auth.demoAdmin", home: "/(tabs)" as const },
+];
 
 export default function LoginScreen() {
   const { t } = useTranslation();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState<string | null>(null);
+  const setDriver = useDriverStore((s) => s.setDriver);
+  const chooseMode = useModeStore((s) => s.choose);
+
+  const completeLogin = async (
+    id: string,
+    pw: string,
+    opts?: { asDriver?: boolean; home?: "/(tabs)" | "/driver" },
+  ) => {
+    const res = await api.login(id, pw);
+    if (res.error) {
+      Alert.alert(t("auth.invalidCredentials"));
+      return false;
+    }
+    await auth.saveTokens(res);
+    await setDriver(Boolean(opts?.asDriver));
+    if (opts?.asDriver) {
+      await chooseMode("ride");
+    }
+    router.replace(opts?.home ?? "/(tabs)");
+    return true;
+  };
 
   const onLogin = async () => {
     if (!identifier || !password) {
@@ -35,19 +68,38 @@ export default function LoginScreen() {
     }
     setLoading(true);
     try {
-      const res = await api.login(identifier, password);
-      if (res.error) {
-        Alert.alert(t("auth.invalidCredentials"));
-        return;
-      }
-      await auth.saveTokens(res);
-      router.replace("/(tabs)");
+      const asDriver =
+        identifier.trim().toLowerCase() === "driver@seyyare.men";
+      await completeLogin(identifier, password, {
+        asDriver,
+        home: asDriver ? "/driver" : "/(tabs)",
+      });
     } catch {
       Alert.alert(t("errors.serverError"));
     } finally {
       setLoading(false);
     }
   };
+
+  const onDemoLogin = async (acc: (typeof DEMO_ACCOUNTS)[number]) => {
+    setIdentifier(acc.email);
+    setPassword(DEMO_PASSWORD);
+    setDemoLoading(acc.email);
+    setLoading(true);
+    try {
+      await completeLogin(acc.email, DEMO_PASSWORD, {
+        asDriver: acc.role === "driver",
+        home: acc.home,
+      });
+    } catch {
+      Alert.alert(t("errors.serverError"));
+    } finally {
+      setDemoLoading(null);
+      setLoading(false);
+    }
+  };
+
+  const busy = loading || demoLoading !== null;
 
   return (
     <View style={styles.root}>
@@ -99,12 +151,45 @@ export default function LoginScreen() {
             />
 
             <Button
-              label={loading ? t("common.loading") : t("auth.login")}
+              label={loading && !demoLoading ? t("common.loading") : t("auth.login")}
               variant="primary"
-              loading={loading}
-              disabled={loading}
+              loading={loading && !demoLoading}
+              disabled={busy}
               onPress={onLogin}
             />
+
+            <View style={styles.demoBlock}>
+              <Text style={styles.demoTitle}>{t("auth.demoAccounts")}</Text>
+              <Text style={styles.demoHint}>Demo123!</Text>
+              <View style={styles.demoRow}>
+                {DEMO_ACCOUNTS.map((acc) => (
+                  <TouchableOpacity
+                    key={acc.email}
+                    style={[
+                      styles.demoChip,
+                      demoLoading === acc.email && styles.demoChipActive,
+                    ]}
+                    disabled={busy}
+                    activeOpacity={0.75}
+                    onPress={() => void onDemoLogin(acc)}
+                  >
+                    <Text
+                      style={[
+                        styles.demoChipLabel,
+                        demoLoading === acc.email && styles.demoChipLabelActive,
+                      ]}
+                    >
+                      {demoLoading === acc.email
+                        ? t("common.loading")
+                        : t(acc.labelKey)}
+                    </Text>
+                    <Text style={styles.demoChipEmail} numberOfLines={1}>
+                      {acc.email}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
 
             <TouchableOpacity
               style={styles.linkWrap}
@@ -166,6 +251,53 @@ const styles = StyleSheet.create({
     marginBottom: space.section,
   },
   passwordField: { marginBottom: space.xxl },
+  demoBlock: {
+    marginTop: space.xl,
+    paddingTop: space.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.line,
+  },
+  demoTitle: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 13,
+    color: colors.inkMuted,
+    marginBottom: 2,
+  },
+  demoHint: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkFaint,
+    marginBottom: space.md,
+  },
+  demoRow: {
+    gap: space.sm,
+  },
+  demoChip: {
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.md,
+    paddingHorizontal: space.md,
+    paddingVertical: 10,
+    backgroundColor: colors.mist,
+  },
+  demoChipActive: {
+    borderColor: colors.flame,
+    backgroundColor: colors.flameSoft,
+  },
+  demoChipLabel: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.ink,
+  },
+  demoChipLabelActive: {
+    color: colors.flameDeep,
+  },
+  demoChipEmail: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.inkFaint,
+    marginTop: 2,
+  },
   linkWrap: { alignItems: "center", paddingVertical: space.md, marginTop: space.sm },
   linkMuted: {
     fontFamily: fonts.body,

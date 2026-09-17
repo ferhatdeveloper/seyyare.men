@@ -1,0 +1,30 @@
+# Soft-launch: HTTP-only nginx.conf (TLS via Cloudflare Tunnel)
+# Usage:
+#   HTTP_PORT=8088 docker compose -f docker-compose.yml -f docker-compose.soft.yml --env-file .env up -d
+services:
+  nginx:
+    volumes:
+      - ./infra/nginx/nginx.soft.conf:/etc/nginx/nginx.conf:ro
+      - nginx_media_cache:/var/cache/nginx/media
+    depends_on:
+      - postgrest
+      - auth-service
+      - ai-service
+      - web
+    # orchestrator optional for soft expose
+
+  minio:
+    ports:
+      - "${MINIO_PORT:-9002}:9000"
+      - "${MINIO_CONSOLE_PORT:-9003}:9001"
+
+  # Public tunnel — keeps running even when shell exits
+  cloudflared:
+    image: cloudflare/cloudflared:2025.8.1
+    container_name: seyyare-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --protocol http2 --url http://host.docker.internal:${HTTP_PORT:-8088}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - nginx

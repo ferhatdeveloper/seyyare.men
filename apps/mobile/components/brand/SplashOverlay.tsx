@@ -1,20 +1,16 @@
 import { Car, CarTaxiFront, KeyRound } from "lucide-react-native";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
 
 import { colors, fonts } from "../../lib/theme";
-import { BrandMark } from "./BrandMark";
-import { BrandWordmark, type BrandScript } from "./BrandWordmark";
+import {
+  AnimatedBrandLockup,
+  type SplashLocale,
+} from "./AnimatedBrandLockup";
 
-type SplashLocale = "tr" | "en" | "ar" | "ku";
-
-const LOCALES: SplashLocale[] = ["tr", "en", "ar", "ku"];
-
-const WORDMARK: Record<SplashLocale, BrandScript> = {
-  tr: "latin",
-  en: "latin",
-  ar: "arabic",
-  ku: "kurdish",
+type Props = {
+  visible: boolean;
+  onFinish: () => void;
 };
 
 /** Dil → hizmet yazıları (ikonlar sabit) */
@@ -50,114 +46,65 @@ const SERVICE_ICONS = [
   { key: "taxi" as const, Icon: CarTaxiFront },
 ];
 
-const HOLD_MS = 850;
-const FADE_MS = 260;
-
-type Props = {
-  visible: boolean;
-  onFinish: () => void;
-};
-
 /** Splash: sabit ikon + TR → EN → AR → KU yazı döngüsü */
 export function SplashOverlay({ visible, onFinish }: Props) {
   const rootOpacity = useRef(new Animated.Value(1)).current;
-  const textOpacity = useRef(new Animated.Value(1)).current;
-  const [localeIndex, setLocaleIndex] = useState(0);
   const doneRef = useRef(false);
 
-  useEffect(() => {
-    if (!visible) return;
-
-    let cancelled = false;
-    let i = 0;
-
-    const cycle = () => {
-      if (cancelled) return;
-
-      Animated.timing(textOpacity, {
+  const onCycleComplete = useCallback(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    setTimeout(() => {
+      Animated.timing(rootOpacity, {
         toValue: 0,
-        duration: FADE_MS,
+        duration: 360,
         useNativeDriver: true,
       }).start(({ finished }) => {
-        if (!finished || cancelled) return;
-
-        i = (i + 1) % LOCALES.length;
-        setLocaleIndex(i);
-
-        if (i === 0 && !doneRef.current) {
-          doneRef.current = true;
-          Animated.timing(textOpacity, {
-            toValue: 1,
-            duration: FADE_MS,
-            useNativeDriver: true,
-          }).start(() => {
-            setTimeout(() => {
-              Animated.timing(rootOpacity, {
-                toValue: 0,
-                duration: 360,
-                useNativeDriver: true,
-              }).start(({ finished: ok }) => {
-                if (ok) onFinish();
-              });
-            }, 420);
-          });
-          return;
-        }
-
-        Animated.timing(textOpacity, {
-          toValue: 1,
-          duration: FADE_MS,
-          useNativeDriver: true,
-        }).start(() => {
-          setTimeout(cycle, HOLD_MS);
-        });
+        if (finished) onFinish();
       });
-    };
-
-    const t = setTimeout(cycle, HOLD_MS);
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-    };
-  }, [visible, onFinish, rootOpacity, textOpacity]);
+    }, 420);
+  }, [onFinish, rootOpacity]);
 
   if (!visible) return null;
-
-  const locale = LOCALES[localeIndex];
-  const labels = SERVICE_COPY[locale];
-  const script = WORDMARK[locale];
-  const rtl = locale === "ar" || locale === "ku";
 
   return (
     <Animated.View style={[styles.root, { opacity: rootOpacity }]} pointerEvents="auto">
       <View style={styles.center}>
-        <BrandMark size={88} style={styles.mark} />
-        <View style={styles.wordSlot}>
-          <Animated.View style={{ opacity: textOpacity }}>
-            <BrandWordmark script={script} size={36} tone="light" />
-          </Animated.View>
-        </View>
-
-        <Animated.View
-          style={[styles.services, { opacity: textOpacity }, rtl ? styles.servicesRtl : null]}
-        >
-          {SERVICE_ICONS.map((s, idx) => {
-            const Icon = s.Icon;
+        <AnimatedBrandLockup
+          markSize={88}
+          wordSize={36}
+          mode="once"
+          onCycleComplete={onCycleComplete}
+          below={({ locale, opacity, rtl }) => {
+            const labels = SERVICE_COPY[locale];
             return (
-              <View key={s.key} style={styles.serviceItem}>
-                {idx > 0 ? <View style={styles.serviceDivider} /> : null}
-                <View style={styles.serviceInner}>
-                  <View style={styles.serviceIcon}>
-                    <Icon size={18} color={colors.flame} strokeWidth={2.2} />
-                  </View>
-                  <Text style={styles.serviceLabel} numberOfLines={2}>
-                    {labels[s.key]}
-                  </Text>
-                </View>
-              </View>
+              <Animated.View
+                style={[
+                  styles.services,
+                  { opacity },
+                  rtl ? styles.servicesRtl : null,
+                ]}
+              >
+                {SERVICE_ICONS.map((s, idx) => {
+                  const Icon = s.Icon;
+                  return (
+                    <View key={s.key} style={styles.serviceItem}>
+                      {idx > 0 ? <View style={styles.serviceDivider} /> : null}
+                      <View style={styles.serviceInner}>
+                        <View style={styles.serviceIcon}>
+                          <Icon size={18} color={colors.flame} strokeWidth={2.2} />
+                        </View>
+                        <Text style={styles.serviceLabel} numberOfLines={2}>
+                          {labels[s.key]}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </Animated.View>
             );
-          })}
-        </Animated.View>
+          }}
+        />
       </View>
     </Animated.View>
   );
@@ -177,16 +124,6 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 360,
   },
-  mark: {
-    marginBottom: 18,
-  },
-  wordSlot: {
-    minHeight: 48,
-    alignItems: "center",
-    justifyContent: "center",
-    width: "100%",
-    marginBottom: 36,
-  },
   services: {
     flexDirection: "row",
     alignItems: "stretch",
@@ -194,6 +131,7 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "rgba(255,255,255,0.14)",
     paddingTop: 22,
+    marginTop: 22,
     minHeight: 88,
   },
   servicesRtl: {

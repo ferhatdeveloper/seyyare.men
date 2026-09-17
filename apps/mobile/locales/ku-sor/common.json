@@ -9,7 +9,8 @@
     "sell": "فرۆشتن",
     "rentals": "کرێ",
     "profile": "پرۆفایل",
-    "stores": "فرۆشگا"
+    "stores": "فرۆشگا",
+    "services": "خزمەتگوزاری"
   },
   "auth": {
     "login": "چوونەژوورەوە",
@@ -30,7 +31,15 @@
     "language": "زمان",
     "selectLanguage": "زمان هەڵبژێرە",
     "continueAsGuest": "بەردەوامبوون وەک میوان",
-    "termsNotice": "بە بەردەوامبوون، ڕازیت بە مەرجەکانی بەکارهێنان و سیاسەتی تایبەتمەندی"
+    "termsNotice": "بە بەردەوامبوون، ڕازیت بە مەرجەکانی بەکارهێنان و سیاسەتی تایبەتمەندی",
+    "demoAccounts": "هەژمارە دیمۆکان",
+    "demoUser": "بەکارهێنەر",
+    "demoDealer": "فرۆشیار",
+    "demoAdmin": "ئەدمین",
+    "demoDriver": "شۆفێر / تاکسی",
+    "roleUser": "تاکەکەسی",
+    "roleDealer": "پێشانگا / فرۆشیار",
+    "roleDriver": "شۆفێر / تاکسی"
   },
   "home": {
     "greeting": "سڵاو",
@@ -40,7 +49,14 @@
     "featuredRentals": "کرێی تایبەت",
     "aiAssistant": "یاریدەدەری AI",
     "aiAssistantPrompt": "ئۆتۆمبێلێکم بۆ پێشنیار بکە",
-    "seeAll": "هەمووی ببینە"
+    "seeAll": "هەمووی ببینە",
+    "auctions": "مەزاد",
+    "budgetUnder10M": "Under 10M IQD",
+    "budgetUnder25M": "Under 25M IQD",
+    "budgetUnder50M": "Under 50M IQD",
+    "budgetUnder100M": "Under 100M IQD",
+    "goodDeal": "Good Deal",
+    "responsiveDealer": "Responsive"
   },
   "search": {
     "title": "گەڕان بۆ ئۆتۆمبێل",
@@ -61,7 +77,36 @@
     "apply": "جێبەجێکردن",
     "reset": "ڕێکخستنەوە",
     "noResults": "ئەنجام نەدۆزرایەوە",
-    "resultsCount": "{{count}} ئەنجام"
+    "resultsCount": "{{count}} ئەنجام",
+    "quickMake": "مارکە",
+    "priceUnder": "کەمتر لە 10M",
+    "priceMid": "10–25M",
+    "priceOver": "25M+",
+    "yearFrom2020": "2020+",
+    "yearFrom2015": "2015+",
+    "yearOlder": "کۆنتر",
+    "sortNewest": "نوێترین",
+    "sortPriceLow": "هەرزان",
+    "brands": "Brands",
+    "trim": "Trim",
+    "fromYear": "From Year",
+    "toYear": "To Year",
+    "minPrice": "Min Price",
+    "maxPrice": "Max Price",
+    "minMileage": "Min Mileage",
+    "maxMileage": "Max Mileage",
+    "plateCity": "Plate City",
+    "plateType": "Plate Type",
+    "platePrivate": "Private",
+    "plateCommercial": "Commercial",
+    "plateOfficial": "Official",
+    "condition": "Condition",
+    "conditionUsed": "Used",
+    "conditionNew": "New",
+    "showCars": "Show {{count}} Cars",
+    "savedTitle": "Saved",
+    "savedBody": "Search added to saved searches.",
+    "saveFailed": "Could not save search."
   },
   "sell": {
     "title": "ئۆتۆمبێلەکەت بفرۆشە",
@@ -103,7 +148,9 @@
     "familyDriverLocked": "بۆ ئەم هەڵبژاردەیە جێندەری پڕۆفایل دەبێت ژن بێت.",
     "familyDriverLogin": "بۆ داواکردنی شۆفێری ژن بچۆ ژوورەوە.",
     "familyDriverSetGender": "لە پڕۆفایل جێندەر بکە ژن.",
-    "familyHint": "هەڵبژاردەی شۆفێری ژن بۆ خێزان — تەنها ئەندامە ژنەکان"
+    "familyHint": "هەڵبژاردەی شۆفێری ژن بۆ خێزان — تەنها ئەندامە ژنەکان",
+    "withDriver": "With driver",
+    "withDriverFee": "+{{fee}}/day"
   },
   "vehicle": {
     "specs": "تایبەتمەندییەکان",
@@ -118,7 +165,10 @@
     "similarListings": "ڕیکلامە هاوشێوەکان",
     "aiAnalysis": "شیکردنەوەی AI",
     "conditionScore": "نمرەی دۆخ",
-    "damageReport": "ڕاپۆرتی زیان"
+    "damageReport": "ڕاپۆرتی زیان",
+    "verifiedBadge": "Verified",
+    "responsiveBadge": "Responsive",
+    "goodDealBadge": "Good Deal"
   },
   "profile": {
     "title": "پرۆفایل",
@@ -131,7 +181,16 @@
     "help": "یارمەتی",
     "about": "دەربارە",
     "version": "وەشان",
-    "deleteAccount": "سڕینەوەی هەژمار"
+    "deleteAccount": "سڕینەوەی هەژمار",
+    "sectionAccount": "هەژمارم",
+    "sectionServices": "خزمەتگوزارییەکان",
+    "sectionBusiness": "بازرگانی",
+    "sectionMore": "زیاتر",
+    "apiAddress": "ناونیشانی کاتی API",
+    "apiAddressHint": "تۆنێڵ / soft-live. دەستکاری بکە و پاشەکەوت بکە.",
+    "apiAddressPlaceholder": "https://….trycloudflare.com",
+    "apiAddressReset": "گەڕانەوە بۆ بنەڕەت",
+    "apiAddressSaved": "ناونیشانی API نوێکرایەوە"
   },
   "common": {
     "loading": "لە بارکردندایە...",
@@ -156,7 +215,8 @@
     "less": "کەمتر",
     "km": "کم",
     "year": "ساڵ",
-    "currency": "د.ع"
+    "currency": "د.ع",
+    "select": "Select"
   },
   "errors": {
     "network": "پەیوەندی ئینتەرنێتت بپشکنە",
@@ -171,11 +231,162 @@
     "rent": "کرێ",
     "taxi": "داواکردنی تاکسی"
   },
+  "hub": {
+    "buy": "ئۆتۆمبێل بکڕە",
+    "sell": "بفرۆشە",
+    "rent": "بە کرێ بدە",
+    "taxi": "تاکسی",
+    "ride": "گەشت",
+    "moreServices": "خزمەتگوزاری زیاتر",
+    "guide": "ڕێنمایی",
+    "airport": "فڕۆکەخانە",
+    "wash": "شوشتنی ئۆتۆمبێل",
+    "pay": "جزدان / پارەدان",
+    "sharedRide": "نێوان شارەکان"
+  },
+  "modeSelect": {
+    "title": "چی دەتەوێت؟",
+    "subtitle": "سەرەتا کڕین یان کرێ — پاشان فرۆشتن، گەشت و خزمەتگوزاری زیاتر.",
+    "tagline": "بازاڕی ئۆتۆمبێلی عێراق",
+    "moreServices": "خزمەتگوزاری تر",
+    "primaryServices": "خزمەتگوزاری سەرەکی",
+    "preferences": "هەڵبژاردەکان",
+    "language": "زمان",
+    "city": "شار",
+    "hintRide": "تاکسی، هاوبەش یان گواستنەوەی فڕۆکەخانە",
+    "hintBuy": "بگەڕێ، بەراورد بکە، لەگەڵ فرۆشیار قسە بکە",
+    "hintRent": "ڕۆژانە · هەفتانە · مانگانە · گەیاندنی فڕۆکەخانە",
+    "hintSell": "ئاگاداری دابنێ، بە جزدان بڵاوی بکەوە",
+    "hintAuctions": "پێشنیازی زیندوو بدە",
+    "hintWallet": "باڵانس و پارەدان",
+    "hintWash": "شوشتن لە دەرگا",
+    "hintShared": "کورسی نێوان شارەکان",
+    "hintGuide": "ڕێنمایی کڕین",
+    "browseListings": "سەرەتا ئاگادارییەکان ببینە",
+    "popular": "باو",
+    "changeMode": "هەڵبژاردنی خزمەتگوزاری بگۆڕە"
+  },
+  "ride": {
+    "modes": {
+      "city": "تاکسی",
+      "shared": "هاوبەش",
+      "airport": "فڕۆکەخانە"
+    },
+    "badge": {
+      "city": "دیمۆ",
+      "shared": "هاوبەش · دیمۆ",
+      "airport": "گواستنەوەی فڕۆکەخانە · دیمۆ"
+    },
+    "lead": {
+      "city": "لە کوێ بۆ کوێ؟ نرخ و کات خێرا.",
+      "shared": "ڕێگا هاوبەش بکە، کەمتر بدە.",
+      "airport": "گواستنەوەی فڕۆکەخانە ↔ شار."
+    },
+    "from": "لە",
+    "to": "بۆ",
+    "fromPlaceholder": "خاڵی وەرگرتن",
+    "toPlaceholder": "گەڕەک",
+    "vehicleType": "جۆری ئۆتۆمبێل",
+    "payment": "پارەدان",
+    "allMethods": "هەموو ڕێگاکان (Qi Card, Apple Pay…)",
+    "eta": "کاتی گەیشتن",
+    "fare": "خەملاندنی کرێ",
+    "minutes": "خولەک",
+    "ctaCity": "داوای تاکسی",
+    "ctaShared": "کورسی تۆمار بکە",
+    "ctaAirport": "داوای گواستنەوە",
+    "demoNote": "دیمۆ — گەشتی ڕاستەقینە نادرێت.",
+    "missingTitle": "زانیاری کەمە",
+    "missingBody": "تکایە گەڕەک بنووسە.",
+    "demoCreated": "گەشتی دیمۆ دروستکرا",
+    "matchedTitle": "شۆفێر گونجێندرا",
+    "matchedDriver": "شۆفێری گونجێندراو",
+    "matchedEta": "ETA ~{{min}} خولەک",
+    "matching": "شۆفێر دەگەڕێت…",
+    "goHome": "سەرەکی"
+  },
+  "guide": {
+    "subtitle": "ڕێنمایی ئۆتۆمبێل و هەواڵی ناوخۆیی",
+    "demoNote": "ناوەڕۆکی دیمۆ — CMS دواتر."
+  },
+  "wallet": {
+    "subtitle": "باڵانس و شێوازی پارەدان",
+    "balance": "باڵانسی جزدان",
+    "demoBalance": "باڵانسی دیمۆ · پارەدانی ڕاستەقینە نییە",
+    "topUp": "باڵانس زیادبکە",
+    "payMethod": "شێوازی پارەدان",
+    "selected": "شێوازی هەڵبژێردراو",
+    "lastTopUp": "دوایین زیادکردن",
+    "useInTaxi": "لە تاکسی پارە بدە",
+    "iraqHint": "جزدان و تۆڕی کارتی باو لە عێراق / هەرێمی کوردستان",
+    "globalHint": "کارتی نێودەوڵەتی و جزدان (Stripe)",
+    "pspNote": "UIی دیمۆ — FastPay، FIB، ZainCash، Stripe دواتر.",
+    "groups": {
+      "local": "ناوخۆیی / Seyyare",
+      "iraq": "پارەدانی عێراق",
+      "global": "جیهانی"
+    },
+    "methods": {
+      "cash": "کاش",
+      "card": "کارت",
+      "wallet": "جزدانی Seyyare",
+      "fastpay": "FastPay",
+      "fib": "FIB",
+      "zaincash": "ZainCash",
+      "qiCard": "Qi Card",
+      "nasswallet": "NassWallet",
+      "stripe": "Stripe (Visa/MC)",
+      "applePay": "Apple Pay",
+      "googlePay": "Google Pay"
+    }
+  },
   "gender": {
     "label": "جێندەر",
     "female": "ژن",
     "male": "پیاو",
     "unspecified": "نامەوێت بڵێم",
     "hint": "بۆ کرێی خێزان / شۆفێری ژن دەبێت ژن هەڵبژێردرێت"
+  },
+  "currency": {
+    "label": "دراو",
+    "iqd": "دیناری عێراقی (IQD)",
+    "usd": "دۆلاری ئەمریکی (USD)",
+    "hatwanSource": "نرخی ڕۆژانە: Hatwan Exchange (هەولێر)",
+    "hatwanMid": "1 USD ≈ {{rate}} IQD",
+    "refresh": "نوێکردنەوەی نرخ",
+    "buy": "کڕین",
+    "sale": "فرۆشتن"
+  },
+  "auction": {
+    "title": "مەزاد",
+    "subtitle": "مەزادی ئۆتۆمبێلی زیندوو و داهاتوو",
+    "empty": "بۆ ئەم فلتەرە مەزاد نییە",
+    "bids": "ئۆفەر",
+    "currentBid": "ئۆفەری ئێستا",
+    "startPrice": "دەستپێک",
+    "reserve": "ڕێزێرڤ",
+    "noReserve": "ڕێزێرڤ نییە",
+    "reserveMet": "ڕێزێرڤ تێپەڕێنرا",
+    "reserveNotMet": "ڕێزێرڤ هێشتا تێنەپەڕێنراوە",
+    "endsIn": "ماوە بۆ کۆتایی",
+    "startsIn": "ماوە بۆ دەستپێک",
+    "ended": "کۆتایی هات",
+    "notStarted": "مەزاد هێشتا دەستی پێنەکردووە",
+    "bidHistory": "مێژووی ئۆفەر",
+    "noBidsYet": "هێشتا ئۆفەر نییە",
+    "viewListing": "بینینی ڕێکلام",
+    "nextBid": "ئۆفەری داهاتوو",
+    "minIncrement": "کەمترین زیادکردن",
+    "placeBid": "ئۆفەر بدە",
+    "bidPlaced": "ئۆفەر تۆمارکرا",
+    "bidPlacedBody": "ئۆفەری {{amount}} تۆمارکرا (دیمۆ).",
+    "liveBanner": "مەزادی زیندوو",
+    "liveUpdating": "زیندوو",
+    "upcomingBanner": "مەزادی داهاتوو",
+    "status": {
+      "live": "زیندوو",
+      "upcoming": "بەم زووانە",
+      "ended": "کۆتایی"
+    }
   }
 }

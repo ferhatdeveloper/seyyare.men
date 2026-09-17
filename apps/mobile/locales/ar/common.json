@@ -9,7 +9,8 @@
     "sell": "بيع",
     "rentals": "تأجير",
     "profile": "الملف الشخصي",
-    "stores": "المعارض"
+    "stores": "المعارض",
+    "services": "الخدمات"
   },
   "auth": {
     "login": "تسجيل الدخول",
@@ -30,7 +31,15 @@
     "language": "اللغة",
     "selectLanguage": "اختر اللغة",
     "continueAsGuest": "متابعة كضيف",
-    "termsNotice": "بالمتابعة فإنك توافق على شروط الاستخدام وسياسة الخصوصية"
+    "termsNotice": "بالمتابعة فإنك توافق على شروط الاستخدام وسياسة الخصوصية",
+    "demoAccounts": "حسابات تجريبية",
+    "demoUser": "مستخدم",
+    "demoDealer": "تاجر",
+    "demoAdmin": "مسؤول",
+    "demoDriver": "سائق / تاكسي",
+    "roleUser": "فردي",
+    "roleDealer": "معرض / تاجر",
+    "roleDriver": "سائق / تاكسي"
   },
   "home": {
     "greeting": "مرحبًا",
@@ -40,7 +49,14 @@
     "featuredRentals": "الإيجارات المميزة",
     "aiAssistant": "مساعد الذكاء الاصطناعي",
     "aiAssistantPrompt": "اقترح لي سيارة",
-    "seeAll": "عرض الكل"
+    "seeAll": "عرض الكل",
+    "auctions": "المزادات",
+    "budgetUnder10M": "أقل من 10M IQD",
+    "budgetUnder25M": "أقل من 25M IQD",
+    "budgetUnder50M": "أقل من 50M IQD",
+    "budgetUnder100M": "أقل من 100M IQD",
+    "goodDeal": "Good Deal",
+    "responsiveDealer": "Responsive"
   },
   "search": {
     "title": "بحث عن السيارات",
@@ -61,7 +77,36 @@
     "apply": "تطبيق",
     "reset": "إعادة",
     "noResults": "لا توجد نتائج",
-    "resultsCount": "{{count}} نتائج"
+    "resultsCount": "{{count}} نتائج",
+    "quickMake": "الماركة",
+    "priceUnder": "أقل من 10M",
+    "priceMid": "10–25M",
+    "priceOver": "25M+",
+    "yearFrom2020": "2020+",
+    "yearFrom2015": "2015+",
+    "yearOlder": "أقدم",
+    "sortNewest": "الأحدث",
+    "sortPriceLow": "الأرخص",
+    "brands": "الماركات",
+    "trim": "الفئة",
+    "fromYear": "من سنة",
+    "toYear": "إلى سنة",
+    "minPrice": "أقل سعر",
+    "maxPrice": "أعلى سعر",
+    "minMileage": "أقل مسافة",
+    "maxMileage": "أعلى مسافة",
+    "plateCity": "مدينة اللوحة",
+    "plateType": "نوع اللوحة",
+    "platePrivate": "خاص",
+    "plateCommercial": "تجاري",
+    "plateOfficial": "رسمي",
+    "condition": "الحالة",
+    "conditionUsed": "مستعمل",
+    "conditionNew": "جديد",
+    "showCars": "عرض {{count}} سيارة",
+    "savedTitle": "تم الحفظ",
+    "savedBody": "أُضيف البحث إلى عمليات البحث المحفوظة.",
+    "saveFailed": "تعذر حفظ البحث."
   },
   "sell": {
     "title": "بيع سيارتك",
@@ -103,7 +148,9 @@
     "familyDriverLocked": "يجب أن يكون الجنس في ملفك الشخصي أنثى لاستخدام هذا الخيار.",
     "familyDriverLogin": "سجّل الدخول لطلب سائقة.",
     "familyDriverSetGender": "اضبط الجنس إلى أنثى في ملفك الشخصي.",
-    "familyHint": "خيار سائقة للعائلات متاح — للأعضاء الإناث فقط"
+    "familyHint": "خيار سائقة للعائلات متاح — للأعضاء الإناث فقط",
+    "withDriver": "With driver",
+    "withDriverFee": "+{{fee}}/day"
   },
   "vehicle": {
     "specs": "المواصفات",
@@ -118,7 +165,10 @@
     "similarListings": "إعلانات مشابهة",
     "aiAnalysis": "تحليل الذكاء الاصطناعي",
     "conditionScore": "درجة الحالة",
-    "damageReport": "تقرير الأضرار"
+    "damageReport": "تقرير الأضرار",
+    "verifiedBadge": "Verified",
+    "responsiveBadge": "Responsive",
+    "goodDealBadge": "Good Deal"
   },
   "profile": {
     "title": "الملف الشخصي",
@@ -131,7 +181,16 @@
     "help": "المساعدة",
     "about": "حول",
     "version": "الإصدار",
-    "deleteAccount": "حذف الحساب"
+    "deleteAccount": "حذف الحساب",
+    "sectionAccount": "حسابي",
+    "sectionServices": "الخدمات",
+    "sectionBusiness": "الأعمال",
+    "sectionMore": "المزيد",
+    "apiAddress": "عنوان API مؤقت",
+    "apiAddressHint": "بوابة tunnel / soft-live. عدّل ثم احفظ.",
+    "apiAddressPlaceholder": "https://….trycloudflare.com",
+    "apiAddressReset": "إعادة الافتراضي",
+    "apiAddressSaved": "تم تحديث عنوان API"
   },
   "common": {
     "loading": "جار التحميل...",
@@ -156,7 +215,8 @@
     "less": "أقل",
     "km": "كم",
     "year": "سنة",
-    "currency": "ر.س"
+    "currency": "ر.س",
+    "select": "اختر"
   },
   "errors": {
     "network": "تحقق من اتصال الإنترنت",
@@ -171,11 +231,162 @@
     "rent": "تأجير",
     "taxi": "طلب تاكسي"
   },
+  "hub": {
+    "buy": "اشترِ سيارة",
+    "sell": "اعرض للبيع",
+    "rent": "استأجر",
+    "taxi": "تاكسي",
+    "ride": "رحلة",
+    "moreServices": "المزيد من الخدمات",
+    "guide": "دليل",
+    "airport": "المطار",
+    "wash": "غسيل السيارة",
+    "pay": "محفظة / دفع",
+    "sharedRide": "بين المدن"
+  },
+  "modeSelect": {
+    "title": "ماذا تحتاج؟",
+    "subtitle": "ابدأ بالشراء أو الإيجار — ثم البيع والرحلة والمزيد.",
+    "tagline": "سوق السيارات في العراق",
+    "moreServices": "خدمات أخرى",
+    "primaryServices": "الخدمات الرئيسية",
+    "preferences": "التفضيلات",
+    "language": "اللغة",
+    "city": "المدينة",
+    "hintRide": "تاكسي أو مشترك أو نقل المطار",
+    "hintBuy": "تصفح وقارن وتحدث مع البائعين",
+    "hintRent": "يومي · أسبوعي · شهري · تسليم المطار",
+    "hintSell": "أضف سيارة وانشر عبر المحفظة",
+    "hintAuctions": "قدّم عرضاً مباشراً",
+    "hintWallet": "الرصيد والمدفوعات",
+    "hintWash": "غسيل عند الباب",
+    "hintShared": "مقاعد بين المدن",
+    "hintGuide": "دليل الشراء",
+    "browseListings": "تصفح الإعلانات أولاً",
+    "popular": "الأكثر طلباً",
+    "changeMode": "تغيير اختيار الخدمة"
+  },
+  "ride": {
+    "modes": {
+      "city": "تاكسي",
+      "shared": "مشترك",
+      "airport": "المطار"
+    },
+    "badge": {
+      "city": "رحلة تجريبية",
+      "shared": "مشترك · تجريبي",
+      "airport": "نقل المطار · تجريبي"
+    },
+    "lead": {
+      "city": "من أين إلى أين؟ السعر والوقت فوراً.",
+      "shared": "شارك المسار وادفع أقل.",
+      "airport": "نقل المطار ↔ المدينة."
+    },
+    "from": "من",
+    "to": "إلى",
+    "fromPlaceholder": "نقطة الالتقاط",
+    "toPlaceholder": "الوجهة",
+    "vehicleType": "نوع المركبة",
+    "payment": "الدفع",
+    "allMethods": "كل الطرق (Qi Card, Apple Pay…)",
+    "eta": "الوصول المتوقع",
+    "fare": "تقدير الأجرة",
+    "minutes": "دقيقة",
+    "ctaCity": "اطلب تاكسي",
+    "ctaShared": "احجز مقعداً",
+    "ctaAirport": "اطلب نقلاً",
+    "demoNote": "تدفق تجريبي — لا يتم إرسال رحلة حقيقية.",
+    "missingTitle": "معلومات ناقصة",
+    "missingBody": "يرجى إدخال الوجهة.",
+    "demoCreated": "تم إنشاء رحلة تجريبية",
+    "matchedTitle": "تم مطابقة السائق",
+    "matchedDriver": "السائق المطابق",
+    "matchedEta": "الوصول ~{{min}} د",
+    "matching": "جاري البحث عن سائق…",
+    "goHome": "الرئيسية"
+  },
+  "guide": {
+    "subtitle": "أدلة السيارات وأخبار محلية",
+    "demoNote": "محتوى تجريبي — CMS لاحقاً."
+  },
+  "wallet": {
+    "subtitle": "الرصيد وطرق الدفع",
+    "balance": "رصيد المحفظة",
+    "demoBalance": "رصيد تجريبي · لا مدفوعات حقيقية",
+    "topUp": "شحن الرصيد",
+    "payMethod": "طريقة الدفع",
+    "selected": "الطريقة المحددة",
+    "lastTopUp": "آخر شحن",
+    "useInTaxi": "ادفع في التاكسي",
+    "iraqHint": "محافظ وشبكات بطاقات شائعة في العراق / إقليم كردستان",
+    "globalHint": "بطاقات ومحافظ دولية (Stripe)",
+    "pspNote": "واجهة تجريبية — FastPay وFIB وZainCash وStripe لاحقاً.",
+    "groups": {
+      "local": "محلي / Seyyare",
+      "iraq": "دفع عراقي",
+      "global": "عالمي"
+    },
+    "methods": {
+      "cash": "نقداً",
+      "card": "بطاقة",
+      "wallet": "محفظة Seyyare",
+      "fastpay": "FastPay",
+      "fib": "FIB",
+      "zaincash": "ZainCash",
+      "qiCard": "Qi Card",
+      "nasswallet": "NassWallet",
+      "stripe": "Stripe (Visa/MC)",
+      "applePay": "Apple Pay",
+      "googlePay": "Google Pay"
+    }
+  },
   "gender": {
     "label": "الجنس",
     "female": "أنثى",
     "male": "ذكر",
     "unspecified": "أفضل عدم الإفصاح",
     "hint": "يجب اختيار أنثى لتأجير العائلة / السائقة"
+  },
+  "currency": {
+    "label": "العملة",
+    "iqd": "دينار عراقي (IQD)",
+    "usd": "دولار أمريكي (USD)",
+    "hatwanSource": "سعر يومي: هەتوان للصيرفة (أربيل)",
+    "hatwanMid": "1 USD ≈ {{rate}} IQD",
+    "refresh": "تحديث السعر",
+    "buy": "شراء",
+    "sale": "بيع"
+  },
+  "auction": {
+    "title": "المزادات",
+    "subtitle": "مزادات سيارات مباشرة وقادمة",
+    "empty": "لا مزادات لهذا التصفية",
+    "bids": "مزايدة",
+    "currentBid": "المزايدة الحالية",
+    "startPrice": "البداية",
+    "reserve": "الاحتياطي",
+    "noReserve": "بدون احتياطي",
+    "reserveMet": "تم تجاوز الاحتياطي",
+    "reserveNotMet": "الاحتياطي لم يُتجاوز بعد",
+    "endsIn": "ينتهي خلال",
+    "startsIn": "يبدأ خلال",
+    "ended": "انتهى",
+    "notStarted": "المزاد لم يبدأ بعد",
+    "bidHistory": "سجل المزايدات",
+    "noBidsYet": "لا مزايدات بعد",
+    "viewListing": "عرض الإعلان",
+    "nextBid": "المزايدة التالية",
+    "minIncrement": "الحد الأدنى للزيادة",
+    "placeBid": "قدّم مزايدة",
+    "bidPlaced": "تم تسجيل المزايدة",
+    "bidPlacedBody": "تم تسجيل مزايدتك {{amount}} (تجريبي).",
+    "liveBanner": "مزاد مباشر",
+    "liveUpdating": "مباشر",
+    "upcomingBanner": "مزاد قادم",
+    "status": {
+      "live": "مباشر",
+      "upcoming": "قريباً",
+      "ended": "انتهى"
+    }
   }
 }

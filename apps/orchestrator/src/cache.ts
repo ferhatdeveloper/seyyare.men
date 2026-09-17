@@ -43,7 +43,7 @@ export function makeCacheKey(prefix: string, payload: unknown): string {
  * Akıllı cache: tag-based invalidation + sliding TTL + stats
  */
 export const cache = {
-  private stats: CacheStats = { hits: 0, misses: 0, sets: 0, hitRate: 0, totalKeys: 0 },
+  stats: { hits: 0, misses: 0, sets: 0, hitRate: 0, totalKeys: 0 } as CacheStats,
 
   async get<T>(key: string): Promise<T | null> {
     try {

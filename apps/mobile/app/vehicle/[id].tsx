@@ -17,6 +17,9 @@ import {
   ShieldCheck,
   Star,
   Handshake,
+  Gavel,
+  Tag,
+  Zap,
 } from "lucide-react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -36,14 +39,17 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppHeader } from "../../components/brand";
+import { Badge } from "../../components/ui/Badge";
 import { api } from "../../lib/api";
 import { auth } from "../../lib/auth";
-import { getDemoSeller } from "../../lib/demo-data";
+import { getAuctionForVehicle, getDemoSeller } from "../../lib/demo-data";
 import { storage } from "../../lib/clients";
+import { isGoodDeal, isResponsiveDealer } from "../../lib/marketplace-heuristics";
 import { colors, fonts, radius, shadow, space } from "../../lib/theme";
 
 const GALLERY_H = 340;
 const BORDER_FLAME = "#FFD8B8";
+const WA_GREEN = "#25D366";
 
 interface VehicleDetail {
   id: string;
@@ -185,6 +191,19 @@ export default function VehicleDetailScreen() {
     },
   });
 
+  const startMeet = async () => {
+    if (!(await auth.isAuthenticated())) {
+      router.push("/auth/login");
+      return;
+    }
+    const sellerId = vehicle?.seller_id ?? "demo-seller";
+    const name = vehicle?.seller?.display_name ?? t("meet.sellerDefault");
+    router.push({
+      pathname: "/meet/[id]",
+      params: { id: sellerId, name },
+    });
+  };
+
   const startChat = async () => {
     if (!(await auth.isAuthenticated())) {
       router.push("/auth/login");
@@ -244,6 +263,28 @@ export default function VehicleDetailScreen() {
   const ai = vehicle.ai_analysis?.[0];
   const mediaCount = vehicle.media?.length ?? 0;
   const screenW = Dimensions.get("window").width;
+
+  const demoStore =
+    getDemoSeller(String(vehicle.seller_id)) ?? getDemoSeller("demo-seller");
+  const sellerPhone = demoStore?.phone?.trim() || null;
+  const sellerWhatsapp =
+    demoStore?.whatsapp?.replace(/\D/g, "") ||
+    sellerPhone?.replace(/\D/g, "") ||
+    null;
+  const telHref = sellerPhone ? `tel:${sellerPhone.replace(/\s/g, "")}` : null;
+  const makeGuess =
+    vehicle.ai_analysis?.[0]?.recognized_make ??
+    vehicle.title_original?.split(" ")[0] ??
+    null;
+  const goodDeal = isGoodDeal({
+    price_amount: vehicle.price_amount,
+    year: vehicle.year,
+    make_name: makeGuess,
+  });
+  const sellerResponsive = isResponsiveDealer({
+    verified: vehicle.seller?.verified ?? demoStore?.verified,
+    rating_avg: vehicle.seller?.rating_avg ?? demoStore?.rating_avg,
+  });
 
   return (
     <View style={styles.safe}>
@@ -337,6 +378,54 @@ export default function VehicleDetailScreen() {
               <Text style={styles.negBadgeText}>Pazarlık açık</Text>
             </View>
           ) : null}
+          <View style={styles.dealBadgeRow}>
+            {goodDeal ? (
+              <Badge
+                label={t("vehicle.goodDealBadge")}
+                tone="brass"
+                icon={<Tag size={11} color={colors.brass} strokeWidth={2.5} />}
+              />
+            ) : null}
+            {vehicle.seller?.verified ? (
+              <Badge
+                label={t("vehicle.verifiedBadge")}
+                tone="viridian"
+                icon={<ShieldCheck size={11} color={colors.viridianDeep} strokeWidth={2.5} />}
+              />
+            ) : null}
+            {sellerResponsive ? (
+              <Badge
+                label={t("vehicle.responsiveBadge")}
+                tone="mist"
+                icon={<Zap size={11} color={colors.flameDeep} strokeWidth={2.5} />}
+              />
+            ) : null}
+          </View>
+          {(() => {
+            const auction = getAuctionForVehicle(String(vehicle.id));
+            if (!auction || auction.status === "ended") return null;
+            return (
+              <TouchableOpacity
+                style={styles.auctionBanner}
+                onPress={() => router.push(`/auction/${auction.id}`)}
+                activeOpacity={0.9}
+              >
+                <Gavel size={16} color={colors.white} strokeWidth={2.2} />
+                <View style={styles.flex}>
+                  <Text style={styles.auctionBannerTitle}>
+                    {auction.status === "live"
+                      ? t("auction.liveBanner")
+                      : t("auction.upcomingBanner")}
+                  </Text>
+                  <Text style={styles.auctionBannerSub}>
+                    {t("auction.currentBid")}:{" "}
+                    {Number(auction.current_bid).toLocaleString("tr-TR")} {auction.currency}
+                  </Text>
+                </View>
+                <ChevronRight size={18} color={colors.white} />
+              </TouchableOpacity>
+            );
+          })()}
           <Text style={styles.title}>{title}</Text>
           <View style={styles.metaRow}>
             <Eye size={14} color={colors.inkFaint} />
@@ -439,37 +528,53 @@ export default function VehicleDetailScreen() {
 
       <SafeAreaView edges={["bottom"]} style={styles.bottomBarSafe}>
         <View style={styles.bottomBar}>
-          <TouchableOpacity
-            style={styles.negotiateBtn}
-            onPress={() => router.push(`/negotiate/${id}`)}
-            activeOpacity={0.9}
-          >
-            <Handshake size={16} color={colors.flameDeep} strokeWidth={2.2} />
-            <Text style={styles.negotiateBtnText}>Pazarlık</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.chatBtn} onPress={startChat} activeOpacity={0.9}>
-            <MessageCircle size={16} color={colors.white} />
-            <Text style={styles.chatBtnText}>{t("vehicle.contactSeller")}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.waBtn}
-            onPress={() => {
-              const msg = encodeURIComponent(
-                `Merhaba, Seyyare'deki "${title}" ilanı hakkında bilgi almak istiyorum.`,
-              );
-              const url = `https://wa.me/905551234567?text=${msg}`;
-              Linking.openURL(url).catch(() =>
-                Alert.alert(
-                  "WhatsApp",
-                  "Demo numara: +90 555 123 45 67\n\nUygulama açılamadı — bu bir demo bağlantıdır.",
-                ),
-              );
-            }}
-            activeOpacity={0.9}
-          >
-            <Phone size={16} color={colors.white} />
-            <Text style={styles.waBtnText}>WA</Text>
-          </TouchableOpacity>
+          {telHref || sellerWhatsapp ? (
+            <View style={styles.ctaRow}>
+              {telHref ? (
+                <TouchableOpacity
+                  style={styles.callBtn}
+                  onPress={() => void Linking.openURL(telHref)}
+                  activeOpacity={0.9}
+                >
+                  <Phone size={16} color={colors.white} strokeWidth={2.2} />
+                  <Text style={styles.callBtnText}>{t("vehicle.callSeller")}</Text>
+                </TouchableOpacity>
+              ) : null}
+              {sellerWhatsapp ? (
+                <TouchableOpacity
+                  style={styles.waBtn}
+                  onPress={() => {
+                    const msg = encodeURIComponent(
+                      `Merhaba, Seyyare'deki "${title}" ilanı hakkında bilgi almak istiyorum.`,
+                    );
+                    void Linking.openURL(`https://wa.me/${sellerWhatsapp}?text=${msg}`);
+                  }}
+                  activeOpacity={0.9}
+                >
+                  <MessageCircle size={16} color={colors.white} strokeWidth={2.2} />
+                  <Text style={styles.waBtnText}>{t("vehicle.whatsappSeller")}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : null}
+          <View style={styles.secondaryRow}>
+            <TouchableOpacity
+              style={styles.negotiateBtn}
+              onPress={() => router.push(`/negotiate/${id}`)}
+              activeOpacity={0.9}
+            >
+              <Handshake size={15} color={colors.flameDeep} strokeWidth={2.2} />
+              <Text style={styles.negotiateBtnText}>Pazarlık</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.chatBtn} onPress={startChat} activeOpacity={0.9}>
+              <MessageCircle size={15} color={colors.white} />
+              <Text style={styles.chatBtnText}>{t("meet.message")}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.meetBtn} onPress={startMeet} activeOpacity={0.9}>
+              <Phone size={15} color={colors.white} />
+              <Text style={styles.meetBtnText}>{t("meet.callShort")}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     </View>
@@ -643,6 +748,33 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.flameDeep,
   },
+  dealBadgeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: space.sm,
+  },
+  auctionBanner: {
+    marginTop: space.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    backgroundColor: colors.ink,
+    borderRadius: radius.md,
+    paddingHorizontal: space.md,
+    paddingVertical: 12,
+  },
+  auctionBannerTitle: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.white,
+  },
+  auctionBannerSub: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: "rgba(255,255,255,0.72)",
+    marginTop: 2,
+  },
   title: {
     fontFamily: fonts.displayMed,
     fontSize: 18,
@@ -783,7 +915,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.inkMuted,
   },
-  bottomSpacer: { height: 120 },
+  bottomSpacer: { height: 168 },
   bottomBarSafe: {
     position: "absolute",
     bottom: 0,
@@ -798,28 +930,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.md,
     paddingTop: space.md,
     paddingBottom: space.sm,
+    gap: space.sm,
+  },
+  ctaRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: space.sm,
   },
-  negotiateBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.flameSoft,
-    borderRadius: radius.md,
-    paddingVertical: 14,
-    paddingHorizontal: space.md,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: BORDER_FLAME,
-  },
-  negotiateBtnText: {
-    fontFamily: fonts.bodySemi,
-    fontSize: 13,
-    color: colors.flameDeep,
-  },
-  chatBtn: {
+  callBtn: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
@@ -830,24 +948,76 @@ const styles = StyleSheet.create({
     gap: 6,
     ...shadow.float,
   },
-  chatBtnText: {
+  callBtnText: {
     fontFamily: fonts.bodySemi,
-    fontSize: 13,
+    fontSize: 14,
     color: colors.white,
   },
   waBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: WA_GREEN,
+    borderRadius: radius.md,
+    paddingVertical: 14,
+    gap: 6,
+  },
+  waBtnText: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.white,
+  },
+  secondaryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.sm,
+  },
+  negotiateBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.flameSoft,
+    borderRadius: radius.md,
+    paddingVertical: 12,
+    paddingHorizontal: space.md,
+    gap: 5,
+    borderWidth: 1,
+    borderColor: BORDER_FLAME,
+  },
+  negotiateBtnText: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 12,
+    color: colors.flameDeep,
+  },
+  chatBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.flame,
+    borderRadius: radius.md,
+    paddingVertical: 12,
+    gap: 5,
+  },
+  chatBtnText: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 12,
+    color: colors.white,
+  },
+  meetBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.ink,
     borderRadius: radius.md,
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: space.md,
     gap: 5,
   },
-  waBtnText: {
+  meetBtnText: {
     fontFamily: fonts.bodySemi,
-    fontSize: 13,
+    fontSize: 12,
     color: colors.white,
   },
 });

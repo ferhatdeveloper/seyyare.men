@@ -10,8 +10,8 @@ CREATE OR REPLACE FUNCTION public.search_vehicles(
   fuel_type_ids int[] DEFAULT NULL,
   transmission_ids int[] DEFAULT NULL,
   color_ids int[] DEFAULT NULL,
-  country_code char(2) DEFAULT NULL,
-  city text DEFAULT NULL,
+  p_country_code char(2) DEFAULT NULL,
+  p_city text DEFAULT NULL,
   min_year int DEFAULT NULL,
   max_year int DEFAULT NULL,
   min_price bigint DEFAULT NULL,
@@ -99,7 +99,10 @@ BEGIN
         THEN ST_Distance(v.geo, $2::geography) / 1000.0
         ELSE NULL
       END AS distance_km,
-      (SELECT url FROM public.vehicle_media m WHERE m.vehicle_id = v.id ORDER BY m.is_cover DESC, m.sort_order ASC LIMIT 1) AS cover_url,
+      coalesce(
+        v.cover_url,
+        (SELECT url FROM public.vehicle_media m WHERE m.vehicle_id = v.id ORDER BY m.is_cover DESC, m.sort_order ASC LIMIT 1)
+      ) AS cover_url,
       v.created_at,
       CASE WHEN $3 IS NOT NULL THEN
         ts_rank(v.search_tsv, plainto_tsquery(''simple'', $3))
@@ -107,15 +110,15 @@ BEGIN
     FROM public.vehicles v
     LEFT JOIN public.brands b ON b.id = v.make_id
     LEFT JOIN public.fuel_types ft ON ft.id = v.fuel_type_id
-    LEFT JOIN public.transmission_types tt ON tt.id = v.transmission_type_id
+    LEFT JOIN public.transmission_types tt ON tt.id = v.transmission_id
     LEFT JOIN public.body_types bt ON bt.id = v.body_type_id
     LEFT JOIN public.colors c ON c.id = v.color_id
     WHERE v.status = ''active''
-      AND ($1 IS NULL OR v.search_tsv @@ plainto_tsquery(''simple'', $1))
+      AND ($3 IS NULL OR v.search_tsv @@ plainto_tsquery(''simple'', $3))
       AND ($4::int[] IS NULL OR v.make_id = ANY($4::int[]))
       AND ($5::int[] IS NULL OR v.body_type_id = ANY($5::int[]))
       AND ($6::int[] IS NULL OR v.fuel_type_id = ANY($6::int[]))
-      AND ($7::int[] IS NULL OR v.transmission_type_id = ANY($7::int[]))
+      AND ($7::int[] IS NULL OR v.transmission_id = ANY($7::int[]))
       AND ($8::int[] IS NULL OR v.color_id = ANY($8::int[]))
       AND ($9::char(2) IS NULL OR v.country_code = $9::char(2))
       AND ($10 IS NULL OR lower(v.city) = lower($10))
@@ -141,8 +144,8 @@ BEGIN
     fuel_type_ids,
     transmission_ids,
     color_ids,
-    country_code,
-    city,
+    p_country_code,
+    p_city,
     min_year,
     max_year,
     min_price,
@@ -163,13 +166,76 @@ GRANT EXECUTE ON FUNCTION public.search_vehicles(
   varchar, varchar, int, int
 ) TO anon, authenticated, dealer, admin;
 
--- Marka listesi (locale'e göre)
-CREATE OR REPLACE FUNCTION public.list_brands(locale varchar(10) DEFAULT 'en')
-RETURNS TABLE(id int, name text, logo_url text, is_premium boolean, is_electric boolean)
+-- Aktif ilan sayısı (liste / sayfalama için hafif RPC)
+CREATE OR REPLACE FUNCTION public.count_active_listings()
+RETURNS bigint
 LANGUAGE sql STABLE AS $$
-  SELECT id, name->>$1 AS name, logo_url, is_premium, is_electric
+  SELECT count(*)::bigint FROM public.vehicles WHERE status = 'active';
+$$;
+GRANT EXECUTE ON FUNCTION public.count_active_listings() TO anon, authenticated, dealer, admin;
+
+-- Home card feed from mv_active_listings_feed (see 006). Does not alter search_vehicles.
+DROP FUNCTION IF EXISTS public.list_active_listings_feed(int, int);
+DROP FUNCTION IF EXISTS public.list_active_listings_feed(int, int, varchar);
+
+CREATE OR REPLACE FUNCTION public.list_active_listings_feed(
+  p_limit int DEFAULT 20,
+  p_offset int DEFAULT 0,
+  p_locale varchar(10) DEFAULT 'en'
+) RETURNS TABLE (
+  id uuid,
+  make_id int,
+  make_name text,
+  model text,
+  year int,
+  price_amount bigint,
+  price_currency char(3),
+  city text,
+  country_code char(2),
+  cover_url text,
+  featured boolean,
+  created_at timestamptz,
+  status varchar(16)
+) LANGUAGE sql STABLE AS $$
+  SELECT
+    f.id,
+    f.make_id,
+    coalesce(f.make_name->>p_locale, f.make_name->>'en', f.make_name->>'tr') AS make_name,
+    f.model::text,
+    f.year,
+    f.price_amount,
+    f.price_currency,
+    f.city::text,
+    f.country_code,
+    f.cover_url,
+    f.featured,
+    f.created_at,
+    f.status
+  FROM public.mv_active_listings_feed f
+  ORDER BY f.created_at DESC
+  LIMIT greatest(1, least(coalesce(p_limit, 20), 100))
+  OFFSET greatest(0, coalesce(p_offset, 0));
+$$;
+GRANT EXECUTE ON FUNCTION public.list_active_listings_feed(int, int, varchar)
+  TO anon, authenticated, dealer, admin;
+
+-- Remove ambiguous 2-arg overload (PostgREST PGRST203 when locale omitted)
+DROP FUNCTION IF EXISTS public.list_active_listings_feed(int, int);
+
+-- Marka listesi (locale'e göre)
+DROP FUNCTION IF EXISTS public.list_brands(varchar);
+CREATE OR REPLACE FUNCTION public.list_brands(locale varchar(10) DEFAULT 'en')
+RETURNS TABLE(id int, name text, name_en text, logo_url text, is_premium boolean, is_electric boolean)
+LANGUAGE sql STABLE AS $$
+  SELECT
+    id,
+    COALESCE(name->>$1, name->>'en') AS name,
+    name->>'en' AS name_en,
+    logo_url,
+    is_premium,
+    is_electric
   FROM public.brands
-  ORDER BY is_premium DESC, name->>$1;
+  ORDER BY is_premium DESC, COALESCE(name->>$1, name->>'en');
 $$;
 GRANT EXECUTE ON FUNCTION public.list_brands(varchar) TO anon, authenticated, dealer, admin;
 
@@ -177,13 +243,23 @@ GRANT EXECUTE ON FUNCTION public.list_brands(varchar) TO anon, authenticated, de
 CREATE OR REPLACE FUNCTION public.list_reference_data(locale varchar(10) DEFAULT 'en')
 RETURNS jsonb LANGUAGE sql STABLE AS $$
   SELECT jsonb_build_object(
-    'countries', (SELECT jsonb_agg(jsonb_build_object('code', code, 'name', name->>$1, 'currency', currency_code, 'phone_code', phone_code, 'default_locale', default_locale)) FROM public.countries),
-    'brands', (SELECT jsonb_agg(jsonb_build_object('id', id, 'name', name->>$1, 'is_premium', is_premium, 'is_electric', is_electric, 'logo_url', logo_url)) FROM public.brands),
-    'body_types', (SELECT jsonb_agg(jsonb_build_object('id', id, 'code', code, 'name', name->>$1)) FROM public.body_types),
-    'fuel_types', (SELECT jsonb_agg(jsonb_build_object('id', id, 'code', code, 'name', name->>$1)) FROM public.fuel_types),
-    'transmission_types', (SELECT jsonb_agg(jsonb_build_object('id', id, 'code', code, 'name', name->>$1)) FROM public.transmission_types),
-    'colors', (SELECT jsonb_agg(jsonb_build_object('id', id, 'code', code, 'hex', hex, 'name', name->>$1)) FROM public.colors),
-    'features', (SELECT jsonb_agg(jsonb_build_object('id', id, 'code', code, 'category', category, 'name', name->>$1)) FROM public.features)
+    'countries', (SELECT jsonb_agg(jsonb_build_object('code', code, 'name', COALESCE(name->>$1, name->>'en'), 'currency', currency_code, 'phone_code', phone_code, 'default_locale', default_locale)) FROM public.countries),
+    'brands', (
+      SELECT jsonb_agg(jsonb_build_object(
+        'id', id,
+        'name', COALESCE(name->>$1, name->>'en'),
+        'name_en', name->>'en',
+        'is_premium', is_premium,
+        'is_electric', is_electric,
+        'logo_url', logo_url
+      ) ORDER BY is_premium DESC, COALESCE(name->>$1, name->>'en'))
+      FROM public.brands
+    ),
+    'body_types', (SELECT jsonb_agg(jsonb_build_object('id', id, 'code', code, 'name', COALESCE(name->>$1, name->>'en'))) FROM public.body_types),
+    'fuel_types', (SELECT jsonb_agg(jsonb_build_object('id', id, 'code', code, 'name', COALESCE(name->>$1, name->>'en'))) FROM public.fuel_types),
+    'transmission_types', (SELECT jsonb_agg(jsonb_build_object('id', id, 'code', code, 'name', COALESCE(name->>$1, name->>'en'))) FROM public.transmission_types),
+    'colors', (SELECT jsonb_agg(jsonb_build_object('id', id, 'code', code, 'hex', hex, 'name', COALESCE(name->>$1, name->>'en'))) FROM public.colors),
+    'features', (SELECT jsonb_agg(jsonb_build_object('id', id, 'code', code, 'category', category, 'name', COALESCE(name->>$1, name->>'en'))) FROM public.features)
   );
 $$;
 GRANT EXECUTE ON FUNCTION public.list_reference_data(varchar) TO anon, authenticated, dealer, admin;

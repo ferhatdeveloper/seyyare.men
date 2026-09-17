@@ -9,30 +9,33 @@ CREATE OR REPLACE FUNCTION public.url_encode(data bytea) RETURNS text LANGUAGE s
 $$;
 
 CREATE OR REPLACE FUNCTION public.url_decode(data text) RETURNS bytea LANGUAGE sql AS $$
-  BEGIN
-    RETURN decode(translate(data, '-_', '+/'), 'base64');
-  END;
+  SELECT decode(translate(data, '-_', '+/'), 'base64');
 $$;
 
 CREATE OR REPLACE FUNCTION public.jwt_sign(payload jsonb, secret text) RETURNS text LANGUAGE sql STABLE AS $$
   WITH
-    header AS (SELECT '{"alg":"HS256","typ":"JWT"}'::jsonb AS json),
+    header AS (
+      SELECT '{"alg":"HS256","typ":"JWT"}'::jsonb AS j
+    ),
     segments AS (
       SELECT
-        url_encode(convert_to(header.json::text, 'UTF8')) AS h,
-        url_encode(convert_to(payload::text, 'UTF8')) AS p
-      FROM (SELECT '{"alg":"HS256","typ":"JWT"}'::jsonb) header
+        public.url_encode(convert_to(header.j::text, 'UTF8')) AS h,
+        public.url_encode(convert_to(payload::text, 'UTF8')) AS p
+      FROM header
     ),
     signing_input AS (
-      SELECT h || '.' || p AS si FROM segments
+      SELECT (h || '.' || p) AS si, h, p FROM segments
     ),
     signature AS (
       SELECT
-        url_encode(hmac(convert_to(si, 'UTF8'), secret, 'sha256')) AS sig
+        public.url_encode(
+          hmac(convert_to(si, 'UTF8'), convert_to(secret, 'UTF8'), 'sha256')
+        ) AS sig,
+        h,
+        p
       FROM signing_input
     )
-  SELECT h || '.' || p || '.' || sig
-  FROM segments, signature;
+  SELECT h || '.' || p || '.' || sig FROM signature;
 $$;
 
 CREATE OR REPLACE FUNCTION public.jwt_verify(token text, secret text) RETURNS jsonb LANGUAGE plpgsql STABLE AS $$
@@ -51,7 +54,7 @@ BEGIN
   header_b64 := parts[1];
   payload_b64 := parts[2];
   sig_b64 := parts[3];
-  expected_sig := url_encode(hmac(convert_to(header_b64 || '.' || payload_b64, 'UTF8'), secret, 'sha256'));
+  expected_sig := url_encode(hmac(convert_to(header_b64 || '.' || payload_b64, 'UTF8'), convert_to(secret, 'UTF8'), 'sha256'));
   IF expected_sig <> sig_b64 THEN
     RAISE EXCEPTION 'signature mismatch';
   END IF;

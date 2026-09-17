@@ -1,22 +1,67 @@
-import { router } from "expo-router";
-import { Bookmark, Search } from "lucide-react-native";
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { router, useFocusEffect } from "expo-router";
+import { Bookmark, Search, Trash2 } from "lucide-react-native";
+import { useCallback, useState } from "react";
+import {
+  Alert,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 import { Button } from "../components/ui/Button";
 import { Screen, ScreenHeader } from "../components/ui/Screen";
-import { DEMO_SAVED_SEARCHES } from "../lib/demo-data";
+import {
+  savedSearchesStore,
+  type SavedSearch,
+} from "../lib/saved-searches-store";
 import { colors, fonts, radius, shadow, space } from "../lib/theme";
 
 const BORDER_FLAME = "#FFD8B8";
 
 export default function SavedSearchesScreen() {
-  const items = DEMO_SAVED_SEARCHES;
+  const [items, setItems] = useState<SavedSearch[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    try {
+      setItems(await savedSearchesStore.list());
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void reload();
+    }, [reload]),
+  );
+
+  const onDelete = (item: SavedSearch) => {
+    Alert.alert("Silinsin mi?", `"${item.title}" kayıtlardan kaldırılacak.`, [
+      { text: "İptal", style: "cancel" },
+      {
+        text: "Sil",
+        style: "destructive",
+        onPress: () => {
+          void (async () => {
+            await savedSearchesStore.remove(item.id);
+            await reload();
+          })();
+        },
+      },
+    ]);
+  };
 
   return (
     <Screen edges={["top"]}>
       <ScreenHeader
         title="Kayıtlı aramalar"
-        subtitle={items.length > 0 ? `${items.length} kayıt` : undefined}
+        subtitle={
+          !loading && items.length > 0 ? `${items.length} kayıt` : undefined
+        }
         onBack={() => router.back()}
       />
 
@@ -34,7 +79,7 @@ export default function SavedSearchesScreen() {
               onPress={() =>
                 router.push({
                   pathname: "/(tabs)/search",
-                  params: item.params,
+                  params: { ...item.params, openResults: "1" },
                 })
               }
             >
@@ -45,7 +90,16 @@ export default function SavedSearchesScreen() {
                 <Text style={styles.rowTitle}>{item.title}</Text>
                 <Text style={styles.rowSub}>{item.subtitle}</Text>
               </View>
-              <Bookmark size={16} color={colors.flame} strokeWidth={2} fill={colors.flameSoft} />
+              <TouchableOpacity
+                style={styles.deleteHit}
+                hitSlop={10}
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  onDelete(item);
+                }}
+              >
+                <Trash2 size={16} color={colors.inkFaint} strokeWidth={2} />
+              </TouchableOpacity>
             </TouchableOpacity>
           )}
         />
@@ -54,16 +108,23 @@ export default function SavedSearchesScreen() {
           <View style={styles.emptyIconWrap}>
             <Bookmark size={36} color={colors.flame} strokeWidth={1.8} />
           </View>
-          <Text style={styles.emptyTitle}>Kayıtlı arama yok</Text>
-          <Text style={styles.emptySub}>
-            Sık kullandığın filtreleri kaydet; bir dokunuşla aynı aramaya dön.
+          <Text style={styles.emptyTitle}>
+            {loading ? "Yükleniyor…" : "Kayıtlı arama yok"}
           </Text>
-          <Button
-            label="Aramaya git"
-            variant="primary"
-            style={styles.emptyBtn}
-            onPress={() => router.push("/(tabs)/search")}
-          />
+          {!loading ? (
+            <>
+              <Text style={styles.emptySub}>
+                Sonuç ekranından aramayı kaydet; bir dokunuşla aynı filtrelere
+                dön.
+              </Text>
+              <Button
+                label="Aramaya git"
+                variant="primary"
+                style={styles.emptyBtn}
+                onPress={() => router.push("/(tabs)/search")}
+              />
+            </>
+          ) : null}
         </View>
       )}
     </Screen>
@@ -108,6 +169,12 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 13,
     color: colors.inkFaint,
+  },
+  deleteHit: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
   },
   empty: {
     flex: 1,

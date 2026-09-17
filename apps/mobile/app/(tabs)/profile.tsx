@@ -3,18 +3,30 @@ import { StatusBar, setStatusBarStyle } from "expo-status-bar";
 import {
   Bell,
   Bookmark,
+  CarTaxiFront,
   ChevronRight,
   Cpu,
+  Droplets,
+  Gavel,
   Globe,
   Heart,
   Info,
+  LayoutGrid,
+  Megaphone,
+  Server,
+  Share2,
+  Store,
+  Users,
+  Wallet,
 } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -24,7 +36,13 @@ import { Button } from "../../components/ui/Button";
 import { Chip } from "../../components/ui/Chip";
 import { Screen, ScreenHeader } from "../../components/ui/Screen";
 import { SectionHeader } from "../../components/ui/SectionHeader";
+import { useApiBaseStore } from "../../lib/api-base-store";
 import { auth, type StoredUser, type UserGender } from "../../lib/auth";
+import {
+  type AppCurrency,
+  useCurrencyStore,
+} from "../../lib/currency-store";
+import { iqdPerUsd } from "../../lib/hatwan-rates";
 import { localeNativeName, supportedLocales, type LocaleCode } from "../../lib/locales";
 import { colors, fonts, radius, shadow, space } from "../../lib/theme";
 
@@ -34,10 +52,24 @@ export default function ProfileScreen() {
   const [currentLocale, setCurrentLocale] = useState<LocaleCode>(
     i18n.language as LocaleCode,
   );
+  const displayCurrency = useCurrencyStore((s) => s.display);
+  const setDisplayCurrency = useCurrencyStore((s) => s.setDisplay);
+  const quote = useCurrencyStore((s) => s.quote);
+  const refreshRates = useCurrencyStore((s) => s.refreshRates);
+  const midRate = quote ? iqdPerUsd(quote, "mid") : null;
+  const gateway = useApiBaseStore((s) => s.gateway);
+  const override = useApiBaseStore((s) => s.override);
+  const setOverride = useApiBaseStore((s) => s.setOverride);
+  const resetOverride = useApiBaseStore((s) => s.resetOverride);
+  const [apiDraft, setApiDraft] = useState(gateway);
 
   useEffect(() => {
     void auth.getUser().then(setUser);
   }, []);
+
+  useEffect(() => {
+    setApiDraft(gateway);
+  }, [gateway]);
 
   useFocusEffect(
     useCallback(() => {
@@ -50,16 +82,27 @@ export default function ProfileScreen() {
     setCurrentLocale(locale);
   };
 
+  const saveApiAddress = async () => {
+    const next = apiDraft.trim();
+    if (!next) {
+      await resetOverride();
+      return;
+    }
+    await setOverride(next);
+    Alert.alert(t("profile.apiAddress"), t("profile.apiAddressSaved"));
+  };
+
   const initial = (user?.email ?? user?.phone ?? "U").charAt(0).toUpperCase();
 
   return (
     <Screen edges={["top"]}>
       <StatusBar style="light" />
-      <ScreenHeader title={t("profile.title")} subtitle="Seyyare hesabın" large />
+      <ScreenHeader title={t("profile.title")} subtitle={t("app.tagline")} large />
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.accountBlock}>
           {user ? (
@@ -104,6 +147,43 @@ export default function ProfileScreen() {
           )}
         </View>
 
+        <View style={styles.genderSection}>
+          <View style={styles.apiHeader}>
+            <Server size={18} color={colors.flame} strokeWidth={2} />
+            <Text style={[styles.genderTitle, styles.apiTitle]}>{t("profile.apiAddress")}</Text>
+          </View>
+          <Text style={styles.genderHint}>{t("profile.apiAddressHint")}</Text>
+          <TextInput
+            value={apiDraft}
+            onChangeText={setApiDraft}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            placeholder={t("profile.apiAddressPlaceholder")}
+            placeholderTextColor={colors.inkFaint}
+            style={styles.apiInput}
+          />
+          {override ? (
+            <Text style={styles.apiOverrideNote} numberOfLines={1}>
+              override · {override}
+            </Text>
+          ) : null}
+          <View style={styles.apiActions}>
+            <Button
+              label={t("common.save")}
+              variant="primary"
+              style={styles.apiBtn}
+              onPress={() => void saveApiAddress()}
+            />
+            <Button
+              label={t("profile.apiAddressReset")}
+              variant="soft"
+              style={styles.apiBtn}
+              onPress={() => void resetOverride()}
+            />
+          </View>
+        </View>
+
         {user ? (
           <View style={styles.genderSection}>
             <Text style={styles.genderTitle}>{t("gender.label")}</Text>
@@ -135,8 +215,47 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
-        <SectionHeader title="Hızlı erişim" />
+        <View style={styles.genderSection}>
+          <Text style={styles.genderTitle}>{t("currency.label")}</Text>
+          <Text style={styles.genderHint}>{t("currency.hatwanSource")}</Text>
+          {midRate ? (
+            <Text style={styles.genderHint}>
+              {t("currency.hatwanMid", {
+                rate: midRate.toLocaleString("en-US", {
+                  maximumFractionDigits: 1,
+                }),
+              })}
+            </Text>
+          ) : null}
+          <View style={styles.genderChips}>
+            {(["IQD", "USD"] as AppCurrency[]).map((c) => (
+              <Chip
+                key={c}
+                label={c === "IQD" ? t("currency.iqd") : t("currency.usd")}
+                selected={displayCurrency === c}
+                onPress={() => void setDisplayCurrency(c)}
+                style={
+                  displayCurrency === c
+                    ? styles.localeChipActive
+                    : styles.localeChip
+                }
+              />
+            ))}
+            <Chip
+              label={t("currency.refresh")}
+              onPress={() => void refreshRates(true)}
+              style={styles.localeChip}
+            />
+          </View>
+        </View>
+
+        <SectionHeader title={t("profile.sectionAccount")} />
         <View style={styles.menu}>
+          <MenuItem
+            icon={<LayoutGrid size={20} color={colors.flame} strokeWidth={2} />}
+            label={t("modeSelect.changeMode")}
+            onPress={() => router.push("/(tabs)/services")}
+          />
           <MenuItem
             icon={<Heart size={20} color={colors.flame} strokeWidth={2} />}
             label={t("profile.favorites")}
@@ -150,8 +269,69 @@ export default function ProfileScreen() {
           <MenuItem
             icon={<Bell size={20} color={colors.inkMuted} strokeWidth={2} />}
             label={t("profile.notifications")}
+            last
             onPress={() => router.push("/notifications")}
           />
+        </View>
+
+        <View style={styles.sectionGap}>
+          <SectionHeader title={t("profile.sectionServices")} />
+        </View>
+        <View style={styles.menu}>
+          <MenuItem
+            icon={<Wallet size={20} color={colors.flame} strokeWidth={2} />}
+            label={t("hub.pay")}
+            onPress={() => router.push("/wallet")}
+          />
+          <MenuItem
+            icon={<Gavel size={20} color={colors.flame} strokeWidth={2} />}
+            label={t("auction.title")}
+            onPress={() => router.push("/auctions")}
+          />
+          <MenuItem
+            icon={<Droplets size={20} color={colors.flame} strokeWidth={2} />}
+            label={t("hub.wash")}
+            onPress={() => router.push("/car-wash")}
+          />
+          <MenuItem
+            icon={<Users size={20} color={colors.flame} strokeWidth={2} />}
+            label={t("hub.sharedRide")}
+            last
+            onPress={() => router.push("/shared-ride")}
+          />
+        </View>
+
+        <View style={styles.sectionGap}>
+          <SectionHeader title={t("profile.sectionBusiness")} />
+        </View>
+        <View style={styles.menu}>
+          <MenuItem
+            icon={<Store size={20} color={colors.flame} strokeWidth={2} />}
+            label={t("partner.title")}
+            onPress={() => router.push("/partner")}
+          />
+          <MenuItem
+            icon={<Megaphone size={20} color={colors.flame} strokeWidth={2} />}
+            label={t("hub.boost")}
+            onPress={() => router.push("/boost")}
+          />
+          <MenuItem
+            icon={<Share2 size={20} color={colors.flame} strokeWidth={2} />}
+            label={t("hub.socialAgency")}
+            onPress={() => router.push("/social-agency")}
+          />
+          <MenuItem
+            icon={<CarTaxiFront size={20} color={colors.flame} strokeWidth={2} />}
+            label={t("driver.title")}
+            last
+            onPress={() => router.push("/driver")}
+          />
+        </View>
+
+        <View style={styles.sectionGap}>
+          <SectionHeader title={t("profile.sectionMore")} />
+        </View>
+        <View style={styles.menu}>
           <MenuItem
             icon={<Cpu size={20} color={colors.viridian} strokeWidth={2} />}
             label="Agent Inspector"
@@ -329,6 +509,42 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 
+  apiHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  apiTitle: {
+    marginBottom: 0,
+    marginLeft: space.sm,
+  },
+  apiInput: {
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.md,
+    paddingHorizontal: space.md,
+    paddingVertical: 12,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.ink,
+    backgroundColor: colors.mist,
+    marginBottom: space.sm,
+  },
+  apiOverrideNote: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.viridianDeep,
+    marginBottom: space.sm,
+  },
+  apiActions: {
+    flexDirection: "row",
+    gap: space.sm,
+  },
+  apiBtn: { flex: 1 },
+
+  sectionGap: {
+    marginTop: space.xl,
+  },
   menu: {
     marginHorizontal: space.xl,
     backgroundColor: colors.white,

@@ -225,6 +225,55 @@ CREATE POLICY device_tokens_modify_own ON public.device_tokens
   FOR ALL USING (user_id = public.current_user_id())
   WITH CHECK (user_id = public.current_user_id());
 
+-- ============== WALLETS / LEDGER / AUCTIONS (009) ==============
+-- Mutations go through SECURITY DEFINER RPCs; RLS guards direct table access.
+ALTER TABLE public.wallets ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY wallets_select_own ON public.wallets
+  FOR SELECT USING (
+    user_id = public.current_user_id()
+    OR public.current_jwt_role() = 'admin'
+  );
+
+ALTER TABLE public.wallet_ledger ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY wallet_ledger_select_own ON public.wallet_ledger
+  FOR SELECT USING (
+    user_id = public.current_user_id()
+    OR public.current_jwt_role() = 'admin'
+  );
+
+ALTER TABLE public.auctions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY auctions_select_live_or_party ON public.auctions
+  FOR SELECT USING (
+    status = 'live'
+    OR seller_id = public.current_user_id()
+    OR public.current_jwt_role() = 'admin'
+  );
+
+CREATE POLICY auctions_insert_seller ON public.auctions
+  FOR INSERT WITH CHECK (seller_id = public.current_user_id());
+
+CREATE POLICY auctions_update_seller ON public.auctions
+  FOR UPDATE USING (
+    seller_id = public.current_user_id()
+    OR public.current_jwt_role() = 'admin'
+  );
+
+ALTER TABLE public.auction_bids ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY auction_bids_select ON public.auction_bids
+  FOR SELECT USING (
+    bidder_id = public.current_user_id()
+    OR EXISTS (
+      SELECT 1 FROM public.auctions a
+      WHERE a.id = auction_bids.auction_id
+        AND (a.status = 'live' OR a.seller_id = public.current_user_id())
+    )
+    OR public.current_jwt_role() = 'admin'
+  );
+
 -- ============== STATIC TABLES — herkes okuyabilir ==============
 -- countries, brands, body_types, fuel_types, transmission_types, colors, features
 DO $$

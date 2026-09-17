@@ -80,13 +80,43 @@ docker compose -f docker-compose.prod.yml --env-file .env.production up -d
 docker compose ps  # tüm servisler healthy olmalı
 ```
 
-## Adım 7: DB Migration
-
-Migration'lar otomatik olarak `docker-entrypoint-initdb.d` üzerinden çalışır. İlk çalıştırmada 10-20 sn bekleyin, sonra:
+## Soft-launch (DB demo veri)
 
 ```bash
-docker compose exec postgres psql -U seyyare -d seyyare -c "SELECT COUNT(*) FROM public.brands;"
-# 31 marka dönene kadar bekle
+chmod +x scripts/go-live.sh scripts/seed-demo.sh
+./scripts/go-live.sh --reset-db   # temiz volume + seed
+# veya mevcut DB'ye tekrar seed:
+./scripts/seed-demo.sh
+```
+
+Demo hesaplar (şifre: `Demo123!`):
+
+| Email | Rol |
+|-------|-----|
+| demo@seyyare.men | kullanıcı |
+| premium@seyyare.men | bayi |
+| anadolu@seyyare.men | bayi |
+| driver@seyyare.men | şoför / taksi |
+| admin@seyyare.men | admin |
+
+Seed içeriği: 31 marka · 8 aktif ilan · 4 kiralama · 2 canlı müzayede · demo kullanıcılar + şoför.
+
+### Marketing web (`apps/web`)
+
+Gateway kökü (`/` / tunnel URL) Vite marketing sitesini sunar; `/api` PostgREST kalır.
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.soft.yml --env-file .env up -d --build web nginx
+```
+
+Mobil: `EXPO_PUBLIC_USE_DEMO_FALLBACK=false` (EAS production profilinde ayarlı) — veri DB'den gelir.
+
+Yerel port çakışması olursa `.env` içinde `POSTGRES_PORT`, `REDIS_PORT`, `POSTGREST_PORT` değiştirin.
+
+Prod compose:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production up -d
 ```
 
 ## Adım 8: Mobil Uygulama Build

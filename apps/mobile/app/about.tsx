@@ -1,4 +1,4 @@
-import { LinearGradient } from "expo-linear-gradient";
+import { SoftGradient as LinearGradient } from "../components/SoftGradient";
 import { router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Car, CarTaxiFront, ChevronLeft, KeyRound } from "lucide-react-native";

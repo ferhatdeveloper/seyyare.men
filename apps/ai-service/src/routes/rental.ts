@@ -221,7 +221,7 @@ export async function rentalRoutes(app: FastifyInstance): Promise<void> {
     }
     // GET versiyonuna yönlendir
     const url = `/ai/rental-price?rentalId=${parsed.data.rentalId}&startDate=${parsed.data.startDate}&endDate=${parsed.data.endDate}`;
-    return reply.redirect(307, url);
+    return reply.redirect(url);
   });
 }
 

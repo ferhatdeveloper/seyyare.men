@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, I18nManager, Platform, StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -22,8 +22,15 @@ import { CardHost } from "../components/agent/CardHost";
 import { LoadingOverlay } from "../components/agent/LoadingOverlay";
 import { ToastHost } from "../components/agent/ToastHost";
 import { SplashOverlay } from "../components/brand";
+import { useCityStore } from "../lib/city-store";
+import { useCurrencyStore } from "../lib/currency-store";
+import { useApiBaseStore } from "../lib/api-base-store";
+import { useDriverStore } from "../lib/driver-store";
+import { useModeStore } from "../lib/mode-store";
+import { useWalletStore } from "../lib/wallet-store";
 import { isRTL, type LocaleCode } from "../lib/locales";
 import { colors } from "../lib/theme";
+import { router } from "expo-router";
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
@@ -36,6 +43,30 @@ export default function RootLayout() {
   });
   const [splashVisible, setSplashVisible] = useState(true);
   const onSplashFinish = useCallback(() => setSplashVisible(false), []);
+  const hydrateCurrency = useCurrencyStore((s) => s.hydrate);
+  const hydrateWallet = useWalletStore((s) => s.hydrate);
+  const hydrateMode = useModeStore((s) => s.hydrate);
+  const hydrateCity = useCityStore((s) => s.hydrate);
+  const hydrateApiBase = useApiBaseStore((s) => s.hydrate);
+  const hydrateDriver = useDriverStore((s) => s.hydrate);
+  const modeHydrated = useModeStore((s) => s.hydrated);
+  const hasChosenMode = useModeStore((s) => s.hasChosen);
+
+  useEffect(() => {
+    void hydrateCurrency();
+    void hydrateWallet();
+    void hydrateMode();
+    void hydrateCity();
+    void hydrateApiBase();
+    void hydrateDriver();
+  }, [hydrateCurrency, hydrateWallet, hydrateMode, hydrateCity, hydrateApiBase, hydrateDriver]);
+
+  useEffect(() => {
+    if (splashVisible || !modeHydrated) return;
+    if (!hasChosenMode) {
+      router.replace("/mode-select");
+    }
+  }, [splashVisible, modeHydrated, hasChosenMode]);
 
   const queryClient = useMemo(
     () =>
@@ -78,6 +109,7 @@ export default function RootLayout() {
             }}
           >
             <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="mode-select" options={{ headerShown: false, animation: "fade" }} />
             <Stack.Screen name="auth/login" options={{ presentation: "modal" }} />
             <Stack.Screen name="auth/register" options={{ presentation: "modal" }} />
             <Stack.Screen name="about" options={{ headerShown: false }} />
@@ -85,12 +117,22 @@ export default function RootLayout() {
             <Stack.Screen name="saved-searches" options={{ headerShown: false }} />
             <Stack.Screen name="vehicle/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="rental/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="auctions" options={{ headerShown: false }} />
+            <Stack.Screen name="auction/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="ai-assistant" options={{ headerShown: false }} />
             <Stack.Screen name="taxi" options={{ headerShown: false }} />
+            <Stack.Screen name="guide" options={{ headerShown: false }} />
+            <Stack.Screen name="wallet" options={{ headerShown: false }} />
+            <Stack.Screen name="car-wash" options={{ headerShown: false }} />
+            <Stack.Screen name="shared-ride" options={{ headerShown: false }} />
+            <Stack.Screen name="partner/index" options={{ headerShown: false }} />
+            <Stack.Screen name="partner/contract" options={{ headerShown: false }} />
+            <Stack.Screen name="driver/index" options={{ headerShown: false }} />
             <Stack.Screen name="voice" options={{ headerShown: false }} />
             <Stack.Screen name="agents" options={{ headerShown: false }} />
             <Stack.Screen name="favorites" options={{ headerShown: false }} />
             <Stack.Screen name="chat/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="meet/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="seller/[id]" options={{ headerShown: false }} />
             <Stack.Screen name="stores" options={{ headerShown: false }} />
             <Stack.Screen

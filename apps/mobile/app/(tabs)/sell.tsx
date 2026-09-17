@@ -1,6 +1,6 @@
-import { Camera, Check, Sparkles } from "lucide-react-native";
+import { Camera, Check, Sparkles, Wallet } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { setStatusBarStyle } from "expo-status-bar";
 import { useTranslation } from "react-i18next";
 import {
@@ -25,7 +25,15 @@ import { Field } from "../../components/ui/Field";
 import { Screen, ScreenHeader } from "../../components/ui/Screen";
 import { SectionHeader } from "../../components/ui/SectionHeader";
 import { runAgent } from "../../lib/agent-client";
+import { api } from "../../lib/api";
+import { auth } from "../../lib/auth";
+import { useCityStore } from "../../lib/city-store";
+import { useCurrencyStore } from "../../lib/currency-store";
 import { useUIStore } from "../../lib/ui-store";
+import {
+  LISTING_FEE_IQD,
+  useWalletStore,
+} from "../../lib/wallet-store";
 import { colors, fonts, radius, shadow, space } from "../../lib/theme";
 
 const STEPS = [
@@ -38,11 +46,18 @@ const STEPS = [
 export default function SellScreen() {
   const { t } = useTranslation();
   const forms = useUIStore((s) => s.forms);
+  const formatListing = useCurrencyStore((s) => s.formatListing);
+  const balanceIqd = useWalletStore((s) => s.balanceIqd);
+  const hydrateWallet = useWalletStore((s) => s.hydrate);
+  const chargeListingFee = useWalletStore((s) => s.chargeListingFee);
+  const city = useCityStore((s) => s.city);
+  const canAfford = balanceIqd >= LISTING_FEE_IQD;
 
   useFocusEffect(
     useCallback(() => {
       setStatusBarStyle("light");
-    }, []),
+      void hydrateWallet();
+    }, [hydrateWallet]),
   );
 
   const autofill = forms["sell-form"];
@@ -106,24 +121,103 @@ export default function SellScreen() {
 
   const publishListing = async () => {
     if (!price) {
-      Alert.alert(t("sell.priceRequired"));
+      Alert.alert(t("errors.validationError"), t("sell.priceRequired"));
+      return;
+    }
+    const charged = await chargeListingFee();
+    if (!charged.ok) {
+      Alert.alert(
+        t("sell.balanceRequiredTitle"),
+        t("sell.balanceRequiredBody", {
+          fee: formatListing(LISTING_FEE_IQD, "IQD"),
+          balance: formatListing(balanceIqd, "IQD"),
+          need: formatListing(charged.need, "IQD"),
+        }),
+        [
+          { text: t("common.cancel"), style: "cancel" },
+          {
+            text: t("sell.topUpNow"),
+            onPress: () => router.push("/wallet"),
+          },
+        ],
+      );
       return;
     }
     setActiveRun(true);
     try {
-      const run = runAgent({
-        text: `İlanı yayınla: ${make} ${model} ${year}, ${price}`,
-        locale: "tr",
-        vehicleData: {
-          source: "publish",
-          make,
-          model,
-          year: Number(year),
-          price: Number(price),
+      let inserted = false;
+      try {
+        const user = await auth.getUser();
+        if (user?.id) {
+          const yearNum = Number(year);
+          const priceNum = Number(price);
+          const mileageNum = mileage.trim() ? Number(mileage) : null;
+          const title = `${make} ${model} ${year}`.trim();
+          const row = await api.createVehicle({
+            seller_id: user.id,
+            make_custom: make.trim() || null,
+            model: model.trim() || null,
+            year: Number.isFinite(yearNum) ? yearNum : null,
+            mileage_km:
+              mileageNum != null && Number.isFinite(mileageNum) ? mileageNum : null,
+            price_amount: Number.isFinite(priceNum) ? Math.round(priceNum) : null,
+            price_currency: "IQD",
+            title_original: title || null,
+            description_original: description.trim() || null,
+            status: "draft",
+            condition: "used",
+            country_code: "IQ",
+            city: city !== "all" ? city : "Baghdad",
+            negotiable: true,
+          });
+          inserted = row != null && typeof row.id === "string";
+        }
+      } catch {
+        inserted = false;
+      }
+
+      try {
+        const run = runAgent({
+          text: `İlanı yayınla: ${make} ${model} ${year}, ${price}`,
+          locale: "tr",
+          vehicleData: {
+            source: "publish",
+            make,
+            model,
+            year: Number(year),
+            price: Number(price),
+          },
+        });
+        await run.promise;
+      } catch {
+        /* agent optional */
+      }
+
+      const feeLabel = formatListing(charged.fee, "IQD");
+      const afterPublish = [
+        {
+          text: t("hub.boost"),
+          onPress: () => router.push("/boost"),
         },
-      });
-      await run.promise;
-      Alert.alert("Yayınlandı", "İlanınız admin onayından sonra yayına alınacak");
+        { text: t("common.done") },
+      ];
+      if (inserted) {
+        Alert.alert(
+          t("sell.publishedTitle"),
+          charged.remote
+            ? t("sell.publishedBody", { fee: feeLabel })
+            : t("sell.publishedBodyNoFee"),
+          afterPublish,
+        );
+      } else {
+        Alert.alert(
+          t("sell.publishedTitle"),
+          charged.remote
+            ? t("sell.publishedDemoFeeBody", { fee: feeLabel })
+            : t("sell.publishedDemoBody"),
+          afterPublish,
+        );
+      }
     } finally {
       setActiveRun(false);
     }
@@ -143,9 +237,31 @@ export default function SellScreen() {
         >
           <ScreenHeader
             title={t("sell.title")}
-            subtitle="Birkaç adımda ilanını yayınla"
+            subtitle={t("app.tagline")}
             large
           />
+
+          <TouchableOpacity
+            style={[styles.feeCard, !canAfford && styles.feeCardWarn]}
+            onPress={() => router.push("/wallet")}
+            activeOpacity={0.9}
+          >
+            <View style={styles.feeIcon}>
+              <Wallet size={18} color={canAfford ? colors.flame : colors.danger} strokeWidth={2.2} />
+            </View>
+            <View style={styles.flex}>
+              <Text style={styles.feeTitle}>{t("sell.listingFeeTitle")}</Text>
+              <Text style={styles.feeBody}>
+                {t("sell.listingFeeBody", {
+                  fee: formatListing(LISTING_FEE_IQD, "IQD"),
+                  balance: formatListing(balanceIqd, "IQD"),
+                })}
+              </Text>
+            </View>
+            <Text style={styles.feeCta}>
+              {canAfford ? t("sell.balanceOk") : t("sell.topUpNow")}
+            </Text>
+          </TouchableOpacity>
 
           <View style={styles.steps}>
             {STEPS.map((step, i) => {
@@ -304,13 +420,30 @@ export default function SellScreen() {
         </ScrollView>
 
         <View style={styles.stickyCta}>
+          <Text style={styles.feeStickyHint}>
+            {canAfford
+              ? t("sell.publishWithFee", { fee: formatListing(LISTING_FEE_IQD, "IQD") })
+              : t("sell.needBalanceHint")}
+          </Text>
           <Button
-            label={activeRun ? "AI çalışıyor..." : t("sell.publish")}
+            label={
+              activeRun
+                ? "AI çalışıyor..."
+                : canAfford
+                  ? t("sell.publish")
+                  : t("sell.topUpToPublish")
+            }
             variant="primary"
             disabled={activeRun}
             loading={activeRun}
             style={styles.publishBtn}
-            onPress={publishListing}
+            onPress={() => {
+              if (!canAfford) {
+                router.push("/wallet");
+                return;
+              }
+              void publishListing();
+            }}
           />
         </View>
       </KeyboardAvoidingView>
@@ -321,6 +454,56 @@ export default function SellScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   scroll: { paddingBottom: space.xl },
+
+  feeCard: {
+    marginHorizontal: space.xl,
+    marginBottom: space.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.md,
+    backgroundColor: colors.white,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.line,
+    padding: space.md,
+    ...shadow.soft,
+  },
+  feeCardWarn: {
+    borderColor: "#F0CACA",
+    backgroundColor: "#FFF8F8",
+  },
+  feeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.flameSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  feeTitle: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: colors.ink,
+  },
+  feeBody: {
+    marginTop: 2,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.inkFaint,
+    lineHeight: 17,
+  },
+  feeCta: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 12,
+    color: colors.flameDeep,
+  },
+  feeStickyHint: {
+    textAlign: "center",
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.inkFaint,
+    marginBottom: space.sm,
+  },
 
   steps: {
     flexDirection: "row",

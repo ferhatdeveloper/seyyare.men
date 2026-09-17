@@ -3,6 +3,8 @@
 
 SET search_path TO public;
 
+CREATE EXTENSION IF NOT EXISTS citext;
+
 -- ============== USERS ==============
 CREATE TABLE IF NOT EXISTS public.users (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -22,8 +24,6 @@ CREATE TABLE IF NOT EXISTS public.users (
 );
 CREATE INDEX IF NOT EXISTS idx_users_role ON public.users(role);
 CREATE INDEX IF NOT EXISTS idx_users_created_at ON public.users(created_at DESC);
-
-CREATE EXTENSION IF NOT EXISTS citext;
 
 CREATE TABLE IF NOT EXISTS public.user_profiles (
   user_id uuid PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,

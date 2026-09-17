@@ -1,5 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 
+import { authClient } from "./clients";
+
 const ACCESS_KEY = "seyyare.access_token";
 const REFRESH_KEY = "seyyare.refresh_token";
 const USER_KEY = "seyyare.user";
@@ -20,6 +22,21 @@ interface AuthTokens {
   accessToken: string;
   refreshToken: string;
   user: StoredUser;
+}
+
+function mapServerUser(row: Record<string, unknown>, fallback: StoredUser): StoredUser {
+  const gender = row.gender;
+  return {
+    id: String(row.id ?? fallback.id),
+    email: (row.email as string | null | undefined) ?? fallback.email,
+    phone: (row.phone as string | null | undefined) ?? fallback.phone,
+    role: (row.role as StoredUser["role"] | undefined) ?? fallback.role,
+    locale: (row.locale as string | undefined) ?? fallback.locale,
+    gender:
+      gender === "female" || gender === "male" || gender === "unspecified" || gender === null
+        ? gender
+        : fallback.gender,
+  };
 }
 
 export const auth = {
@@ -46,6 +63,31 @@ export const auth = {
   async updateUser(patch: Partial<StoredUser>): Promise<StoredUser | null> {
     const current = await this.getUser();
     if (!current) return null;
+
+    if (patch.gender !== undefined) {
+      try {
+        const accessToken = await this.getAccessToken();
+        if (accessToken) {
+          const res = await fetch(`${authClient.url}/auth/me`, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({ gender: patch.gender }),
+          });
+          if (res.ok) {
+            const row = (await res.json()) as Record<string, unknown>;
+            const next = mapServerUser(row, { ...current, ...patch });
+            await SecureStore.setItemAsync(USER_KEY, JSON.stringify(next));
+            return next;
+          }
+        }
+      } catch {
+        /* fall through to local persist */
+      }
+    }
+
     const next = { ...current, ...patch };
     await SecureStore.setItemAsync(USER_KEY, JSON.stringify(next));
     return next;

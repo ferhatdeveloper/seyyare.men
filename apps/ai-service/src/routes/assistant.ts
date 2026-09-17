@@ -205,5 +205,5 @@ function extractFilters(query: string): Record<string, unknown> {
   if (/otomatik|automatic/i.test(lower)) filters.transmission = "automatic";
   else if (/manuel|manual/i.test(lower)) filters.transmission = "manual";
 
-  return Object.keys(filters).length > 0 ? filters : undefined;
+  return Object.keys(filters).length > 0 ? filters : {};
 }

@@ -1,0 +1,45 @@
+# Soft-launch / production overrides for docker-compose.yml
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.production up -d
+
+services:
+  postgres:
+    restart: always
+
+  postgrest:
+    restart: always
+    environment:
+      PGRST_OPENAPI_MODE: disabled
+      PGRST_ADMIN_ENABLED: "false"
+
+  redis:
+    restart: always
+
+  minio:
+    restart: always
+
+  auth-service:
+    restart: always
+    environment:
+      NODE_ENV: production
+
+  ai-service:
+    restart: always
+    environment:
+      NODE_ENV: production
+
+  orchestrator:
+    restart: always
+    environment:
+      NODE_ENV: production
+      QUEUE_WORKERS: "1"
+
+  # Hide pgAdmin from public networks in production
+  pgadmin:
+    profiles: ["admin"]
+
+  nginx:
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"

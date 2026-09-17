@@ -8,6 +8,10 @@ import { VehicleCard, type VehicleListItem } from "../components/VehicleCard";
 import { Button } from "../components/ui/Button";
 import { Screen, ScreenHeader } from "../components/ui/Screen";
 import { api } from "../lib/api";
+import {
+  readFavoritesSnapshot,
+  writeFavoritesSnapshot,
+} from "../lib/offline-snapshot";
 import { colors, fonts, radius, shadow, space } from "../lib/theme";
 
 const BORDER_FLAME = "#FFD8B8";
@@ -15,16 +19,25 @@ const BORDER_FLAME = "#FFD8B8";
 export default function FavoritesScreen() {
   const { t } = useTranslation();
 
-  const { data, isLoading, refetch, isRefetching } = useQuery({
+  const { data: vehicles = [], isLoading, refetch, isRefetching } = useQuery({
     queryKey: ["favorites"],
-    queryFn: () =>
-      api.get<Array<{ vehicle?: VehicleListItem }>>(
-        "/favorites?select=vehicle:vehicles(*,media:vehicle_media(*))&order=created_at.desc",
-      ),
+    queryFn: async () => {
+      try {
+        const rows = await api.get<Array<{ vehicle?: VehicleListItem }>>(
+          "/favorites?select=vehicle:vehicles(*,media:vehicle_media(*))&order=created_at.desc",
+        );
+        const live =
+          rows?.flatMap((f) => (f.vehicle ? [f.vehicle] : [])) ?? [];
+        if (live.length > 0) {
+          void writeFavoritesSnapshot(live);
+          return live;
+        }
+      } catch {
+        /* fall through to snapshot */
+      }
+      return (await readFavoritesSnapshot()) ?? [];
+    },
   });
-
-  const vehicles =
-    data?.flatMap((f) => (f.vehicle ? [f.vehicle] : [])) ?? [];
 
   return (
     <Screen edges={["top"]}>

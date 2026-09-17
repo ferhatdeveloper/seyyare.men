@@ -1,14 +1,5 @@
--- Seyyare.men seed data
--- Ülkeler, markalar, vücut tipleri, yakıt tipleri
-
--- Ülkeler
-CREATE TABLE IF NOT EXISTS public.countries (
-  code char(2) PRIMARY KEY,
-  name jsonb NOT NULL,
-  currency_code char(3),
-  phone_code varchar(8),
-  default_locale varchar(10)
-);
+-- Seyyare.men seed data — reference rows (tables: migration 000_reference_schema.sql)
+-- Runs after schema apply (docker-entrypoint 99_seed.sql)
 
 INSERT INTO public.countries (code, name, currency_code, phone_code, default_locale) VALUES
   ('TR', '{"tr":"Türkiye","en":"Turkey","ar":"تركيا","fa":"ترکیه","ku-bad":"Tirkiye","ku-sor":"تورکیا"}', 'TRY', '+90', 'tr'),
@@ -20,21 +11,19 @@ INSERT INTO public.countries (code, name, currency_code, phone_code, default_loc
   ('GB', '{"tr":"İngiltere","en":"United Kingdom","ar":"المملكة المتحدة","fa":"بریتانیا","ku-bad":"Brîtanya","ku-sor":"بریتانیا"}', 'GBP', '+44', 'en'),
   ('FR', '{"tr":"Fransa","en":"France","ar":"فرنسا","fa":"فرانسه","ku-bad":"Fransa","ku-sor":"فڕانسە"}', 'EUR', '+33', 'fr'),
   ('NL', '{"tr":"Hollanda","en":"Netherlands","ar":"هولندا","fa":"هلند","ku-bad":"Hollanda","ku-sor":"هۆڵەندا"}', 'EUR', '+31', 'nl'),
-  ('SE', '{"tr":"İsveç","en":"Sweden","ar":"السويد","fa":"سوئد","ku-bad":"Swêd","ku-sor":"سوید"}', 'SEK', '+46', 'sv')
+  ('SE', '{"tr":"İsveç","en":"Sweden","ar":"السويد","fa":"سوئد","ku-bad":"Swêd","ku-sor":"سوید"}', 'SEK', '+46', 'sv'),
+  ('JP', '{"tr":"Japonya","en":"Japan","ar":"اليابان","fa":"ژاپن","ku-bad":"Japon","ku-sor":"ژاپۆن"}', 'JPY', '+81', 'en'),
+  ('KR', '{"tr":"Güney Kore","en":"South Korea","ar":"كوريا الجنوبية","fa":"کره جنوبی","ku-bad":"Korê","ku-sor":"کۆریا"}', 'KRW', '+82', 'en'),
+  ('IT', '{"tr":"İtalya","en":"Italy","ar":"إيطاليا","fa":"ایتالیا","ku-bad":"Îtalya","ku-sor":"ئیتاڵیا"}', 'EUR', '+39', 'en'),
+  ('ES', '{"tr":"İspanya","en":"Spain","ar":"إسبانيا","fa":"اسپانیا","ku-bad":"Îspanya","ku-sor":"ئیسپانیا"}', 'EUR', '+34', 'en'),
+  ('CZ', '{"tr":"Çekya","en":"Czechia","ar":"التشيك","fa":"چک","ku-bad":"Çekya","ku-sor":"چێک"}', 'CZK', '+420', 'en'),
+  ('RO', '{"tr":"Romanya","en":"Romania","ar":"رومانيا","fa":"رومانی","ku-bad":"Romanya","ku-sor":"ڕۆمانیا"}', 'RON', '+40', 'en'),
+  ('CN', '{"tr":"Çin","en":"China","ar":"الصين","fa":"چین","ku-bad":"Çîn","ku-sor":"چین"}', 'CNY', '+86', 'en')
 ON CONFLICT (code) DO NOTHING;
 
--- Araç markaları (en yaygın 50)
-CREATE TABLE IF NOT EXISTS public.brands (
-  id serial PRIMARY KEY,
-  name jsonb NOT NULL,
-  logo_url text,
-  country_code char(2) REFERENCES public.countries(code),
-  is_premium boolean DEFAULT false,
-  is_electric boolean DEFAULT false,
-  created_at timestamptz DEFAULT now()
-);
-
-INSERT INTO public.brands (name, country_code, is_premium, is_electric) VALUES
+-- Idempotent brand seed: skip if any brands already exist
+INSERT INTO public.brands (name, country_code, is_premium, is_electric)
+SELECT * FROM (VALUES
   (('{"en":"Toyota","tr":"Toyota","ar":"تويوتا","fa":"تویوتا","ku-bad":"Toyota","ku-sor":"تۆیۆتا"}')::jsonb, 'JP', false, false),
   (('{"en":"Volkswagen","tr":"Volkswagen","ar":"فولكس فاجن","fa":"فولکس واگن","ku-bad":"Volkswagen","ku-sor":"ڤۆلکسواگن"}')::jsonb, 'DE', false, false),
   (('{"en":"BMW","tr":"BMW","ar":"بي إم دبليو","fa":"بی‌ام‌و","ku-bad":"BMW","ku-sor":"بی‌ئێم‌و"}')::jsonb, 'DE', true, false),
@@ -66,14 +55,8 @@ INSERT INTO public.brands (name, country_code, is_premium, is_electric) VALUES
   (('{"en":"Dacia","tr":"Dacia","ar":"داسيا","fa":"داجیا","ku-bad":"Dacia","ku-sor":"داسیا"}')::jsonb, 'RO', false, false),
   (('{"en":"BYD","tr":"BYD","ar":"بي واي دي","fa":"بی‌وایدی","ku-bad":"BYD","ku-sor":"بی‌وایدی"}')::jsonb, 'CN', false, true),
   (('{"en":"Togg","tr":"Togg","ar":"توغ","fa":"توگ","ku-bad":"Togg","ku-sor":"توگ"}')::jsonb, 'TR', false, true)
-ON CONFLICT DO NOTHING;
-
--- Vücut tipleri
-CREATE TABLE IF NOT EXISTS public.body_types (
-  id serial PRIMARY KEY,
-  code varchar(32) UNIQUE NOT NULL,
-  name jsonb NOT NULL
-);
+) AS v(name, country_code, is_premium, is_electric)
+WHERE NOT EXISTS (SELECT 1 FROM public.brands LIMIT 1);
 
 INSERT INTO public.body_types (code, name) VALUES
   ('sedan', ('{"en":"Sedan","tr":"Sedan","ar":"سيدان","fa":"سدان","ku-bad":"Sedan","ku-sor":"سەدان"}')::jsonb),
@@ -89,13 +72,6 @@ INSERT INTO public.body_types (code, name) VALUES
   ('motorcycle', ('{"en":"Motorcycle","tr":"Motosiklet","ar":"دراجة نارية","fa":"موتورسیکلت","ku-bad":"Motosîklet","ku-sor":"ماتۆڕسکلێت"}')::jsonb)
 ON CONFLICT (code) DO NOTHING;
 
--- Yakıt tipleri
-CREATE TABLE IF NOT EXISTS public.fuel_types (
-  id serial PRIMARY KEY,
-  code varchar(32) UNIQUE NOT NULL,
-  name jsonb NOT NULL
-);
-
 INSERT INTO public.fuel_types (code, name) VALUES
   ('gasoline', ('{"en":"Gasoline","tr":"Benzin","ar":"بنزين","fa":"بنزین","ku-bad":"Benzîn","ku-sor":"بەنزین"}')::jsonb),
   ('diesel', ('{"en":"Diesel","tr":"Dizel","ar":"ديزل","fa":"دیزل","ku-bad":"Dîzel","ku-sor":"دیزەڵ"}')::jsonb),
@@ -105,27 +81,12 @@ INSERT INTO public.fuel_types (code, name) VALUES
   ('cng', ('{"en":"CNG","tr":"CNG","ar":"غاز طبيعي","fa":"گاز طبیعی","ku-bad":"CNG","ku-sor":"گازی سروشتی"}')::jsonb)
 ON CONFLICT (code) DO NOTHING;
 
--- Vites tipleri
-CREATE TABLE IF NOT EXISTS public.transmission_types (
-  id serial PRIMARY KEY,
-  code varchar(32) UNIQUE NOT NULL,
-  name jsonb NOT NULL
-);
-
 INSERT INTO public.transmission_types (code, name) VALUES
   ('manual', ('{"en":"Manual","tr":"Manuel","ar":"يدوي","fa":"دنده‌ای","ku-bad":"Manuel","ku-sor":"دەستی"}')::jsonb),
   ('automatic', ('{"en":"Automatic","tr":"Otomatik","ar":"أوتوماتيك","fa":"اتوماتیک","ku-bad":"Otomatîk","ku-sor":"ئۆتۆماتیک"}')::jsonb),
   ('cvt', ('{"en":"CVT","tr":"CVT","ar":"متغير","fa":"CVT","ku-bad":"CVT","ku-sor":"سی‌ڤی‌تی"}')::jsonb),
   ('semi_auto', ('{"en":"Semi-Automatic","tr":"Yarı Otomatik","ar":"نصف أوتوماتيك","fa":"نیمه‌اتوماتیک","ku-bad":"Nîv-otomatîk","ku-sor":"نیوە ئۆتۆماتیک"}')::jsonb)
 ON CONFLICT (code) DO NOTHING;
-
--- Renkler
-CREATE TABLE IF NOT EXISTS public.colors (
-  id serial PRIMARY KEY,
-  code varchar(32) UNIQUE NOT NULL,
-  hex varchar(7) NOT NULL,
-  name jsonb NOT NULL
-);
 
 INSERT INTO public.colors (code, hex, name) VALUES
   ('white', '#FFFFFF', ('{"en":"White","tr":"Beyaz","ar":"أبيض","fa":"سفید","ku-bad":"Spî","ku-sor":"سپی"}')::jsonb),
@@ -141,14 +102,6 @@ INSERT INTO public.colors (code, hex, name) VALUES
   ('beige', '#F5F5DC', ('{"en":"Beige","tr":"Bej","ar":"بيج","fa":"بژ","ku-bad":"Bej","ku-sor":"بەژ"}')::jsonb),
   ('gold', '#FFD700', ('{"en":"Gold","tr":"Altın","ar":"ذهبي","fa":"طلایی","ku-bad":"Zêr","ku-sor":"زێرین"}')::jsonb)
 ON CONFLICT (code) DO NOTHING;
-
--- Özellikler (araç ek özellikleri)
-CREATE TABLE IF NOT EXISTS public.features (
-  id serial PRIMARY KEY,
-  code varchar(64) UNIQUE NOT NULL,
-  category varchar(32),
-  name jsonb NOT NULL
-);
 
 INSERT INTO public.features (code, category, name) VALUES
   ('abs', 'safety', ('{"en":"ABS","tr":"ABS","ar":"ABS","fa":"ABS","ku-bad":"ABS","ku-sor":"ABS"}')::jsonb),
